@@ -3,11 +3,13 @@
 import {useEffect, useState} from "react"
 import {useRouter} from "next/navigation"
 import {useSession, getSession} from "next-auth/react"
+import {useAuthSession} from "@/lib/use-auth-session"
 import {statisticsService} from "@/lib/services"
 import {Button} from "@/components/ui/button"
 import {Card, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
 import {Badge} from "@/components/ui/badge"
 import {AuthButton} from "@/components/auth-button"
+import {DebugPanel} from "@/components/debug-panel"
 import {ArrowLeft, Bug, Clock, Plus, Shield, Star, User, Users} from "lucide-react"
 import {MiniKit} from "@worldcoin/minikit-js"
 
@@ -23,6 +25,7 @@ type AppView = 'home' | 'marketplace' | 'seller-setup' | 'profile'
 export default function MiniApp() {
   const router = useRouter()
   const { data: session, status } = useSession()
+  const { isInitialized } = useAuthSession()
   const [stats, setStats] = useState<PlatformStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(false)
   const [statsError, setStatsError] = useState<string | null>(null)
@@ -102,7 +105,10 @@ export default function MiniApp() {
   }
 
   const renderView = () => {
-    if (!session?.user) {
+    // Simplified authentication check
+    const isAuthenticated = session?.user && status === 'authenticated'
+    
+    if (!isAuthenticated) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
           <div className="container mx-auto px-4 py-8">
@@ -372,13 +378,20 @@ export default function MiniApp() {
     }
   }
 
-  if (status === 'loading') {
+  if (status === 'loading' || !isInitialized) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading Mini App...</p>
           <p className="text-xs text-muted-foreground mt-2">Status: {status}</p>
+          <p className="text-xs text-muted-foreground">Initialized: {isInitialized ? 'Yes' : 'No'}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded text-sm"
+          >
+            Refresh if stuck
+          </button>
         </div>
       </div>
     )
@@ -390,8 +403,54 @@ export default function MiniApp() {
     hasSession: !!session,
     hasUser: !!session?.user,
     currentView,
-    authError
+    authError,
+    sessionUser: session?.user ? {
+      id: session.user.id,
+      username: session.user.username,
+      walletAddress: session.user.walletAddress,
+      verificationLevel: session.user.verificationLevel
+    } : null
   })
 
-  return renderView()
+  // Add error boundary for debugging
+  if (status === 'unauthenticated') {
+    console.log('MiniApp - User is unauthenticated, showing login screen')
+  } else if (status === 'authenticated' && session?.user) {
+    console.log('MiniApp - User is authenticated, showing home screen')
+  } else if (status === 'loading') {
+    console.log('MiniApp - Session is loading...')
+  } else {
+    console.log('MiniApp - Unknown state:', status, session)
+  }
+
+  try {
+    return (
+      <>
+        {renderView()}
+        <DebugPanel />
+      </>
+    )
+  } catch (error) {
+    console.error('MiniApp - Render error:', error)
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-destructive mb-4">Render Error</h1>
+          <p className="text-muted-foreground mb-4">
+            Something went wrong while rendering the app.
+          </p>
+          <pre className="text-xs text-left bg-muted p-4 rounded max-w-md overflow-auto">
+            {error instanceof Error ? error.message : String(error)}
+          </pre>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded"
+          >
+            Reload App
+          </button>
+        </div>
+        <DebugPanel />
+      </div>
+    )
+  }
 }

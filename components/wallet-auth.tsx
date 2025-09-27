@@ -3,7 +3,7 @@
 import {useEffect, useState} from "react"
 import {Button} from "@/components/ui/button"
 import {Loader2, Shield, Wallet} from "lucide-react"
-import {signIn} from "next-auth/react"
+import {signIn, getSession} from "next-auth/react"
 import {MiniKit} from "@worldcoin/minikit-js"
 
 interface WalletAuthProps {
@@ -157,7 +157,16 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
 
       // Successful login - trigger callbacks
       console.log('Step 6: Authentication successful! Triggering callbacks...')
+      
+      // Call success callback immediately
       onSuccess?.()
+      
+      // Force a page reload after a short delay to ensure session is properly established
+      setTimeout(() => {
+        console.log('Step 7: Reloading page to establish session...')
+        window.location.reload()
+      }, 2000)
+      
       console.log('=== Wallet Authentication Complete ===')
     } catch (error) {
       console.error('=== Wallet Authentication Failed ===')

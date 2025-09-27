@@ -58,6 +58,25 @@ function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
   )
 }
 
+function CardAction({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn('flex items-center gap-2', className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn('flex items-center gap-2 px-6 pt-0', className)}
+      {...props}
+    />
+  )
+}
 
 export {
   Card,
@@ -65,4 +84,6 @@ export {
   CardTitle,
   CardDescription,
   CardContent,
+  CardAction,
+  CardFooter,
 }

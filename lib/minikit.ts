@@ -1,4 +1,11 @@
-import { MiniKit, PayCommandInput } from '@worldcoin/minikit-js'
+import { MiniKit, PayCommandInput, VerifyCommandInput } from '@worldcoin/minikit-js'
+
+export interface PaymentPayload {
+  amount: string
+  currency: string
+  recipient: string
+  description?: string
+}
 
 export class MiniKitService {
   private static instance: MiniKitService
@@ -58,6 +65,82 @@ export class MiniKitService {
 
   isAvailable(): boolean {
     return typeof window !== "undefined" && this.isInitialized && MiniKit.isInstalled()
+  }
+
+  isInWorldApp(): boolean {
+    return typeof window !== "undefined" && window.self !== window.top
+  }
+
+  async verify(payload: VerifyCommandInput): Promise<any> {
+    if (!this.isAvailable()) {
+      throw new Error("MiniKit not available")
+    }
+
+    try {
+      const result = await MiniKit.commandsAsync.verify(payload)
+      return {
+        success: true,
+        ...result
+      }
+    } catch (error) {
+      console.error("Verification failed:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Verification failed"
+      }
+    }
+  }
+
+  async requestPermission(permission: string): Promise<boolean> {
+    if (!this.isAvailable()) {
+      return false
+    }
+
+    try {
+      const result = await MiniKit.commandsAsync.requestPermission(permission)
+      return result.granted || false
+    } catch (error) {
+      console.error("Permission request failed:", error)
+      return false
+    }
+  }
+
+  async getPermissions(): Promise<string[]> {
+    if (!this.isAvailable()) {
+      return []
+    }
+
+    try {
+      const result = await MiniKit.commandsAsync.getPermissions()
+      return result.permissions || []
+    } catch (error) {
+      console.error("Failed to get permissions:", error)
+      return []
+    }
+  }
+
+  subscribe(event: string, callback: (data: any) => void): void {
+    if (!this.isAvailable()) {
+      return
+    }
+
+    try {
+      MiniKit.subscribe(event, callback)
+    } catch (error) {
+      console.error("Failed to subscribe to event:", error)
+    }
+  }
+
+  unsubscribe(event: string): void {
+    if (!this.isAvailable()) {
+      return
+    }
+
+    try {
+      MiniKit.unsubscribe(event)
+    } catch (error) {
+      console.error("Failed to unsubscribe from event:", error)
+    }
   }
 
   async pay(payload: PayCommandInput): Promise<any> {

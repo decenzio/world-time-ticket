@@ -21,6 +21,9 @@ export interface ReviewWithProfile extends Review {
   profiles: Profile;
 }
 
+// Review type for backward compatibility
+export type ReviewType = Review;
+
 // Input types for creating entities
 export interface CreatePersonInput {
   user_id: string;

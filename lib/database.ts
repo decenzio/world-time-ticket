@@ -7,9 +7,12 @@ import type { Database } from "./types";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error(
-    "Missing required NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY"
+// For development, we'll create a mock client if env vars are missing
+const isSupabaseConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+if (!isSupabaseConfigured) {
+  console.warn(
+    "Supabase not configured. Using mock client for development."
   );
 }
 
@@ -19,20 +22,31 @@ const SUPABASE_SERVICE_ROLE_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 
 // Public (browser-safe) client
-export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  }
-);
+export const supabase = isSupabaseConfigured
+  ? createClient<Database>(
+      SUPABASE_URL!,
+      SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      }
+    )
+  : createClient<Database>(
+      "https://mock.supabase.co",
+      "mock-anon-key",
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      }
+    );
 
 // Admin client (server-side only). This will be undefined if no service role key is provided.
-export const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY
-  ? createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+export const supabaseAdmin = isSupabaseConfigured && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient<Database>(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     })
   : undefined;

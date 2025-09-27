@@ -8,6 +8,7 @@ import type {
   Profile,
   PersonWithProfile,
   PeopleFilters,
+  Booking,
 } from "@/lib/domain-types";
 
 // Authentication hook with proper error handling
@@ -226,6 +227,44 @@ export function usePeople() {
     error,
     refetch: fetchPeople,
     searchPeople,
+  };
+}
+
+// Bookings hook for managing user bookings
+export function useBookings() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBookings = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // This would typically call a booking service
+      // For now, we'll return an empty array
+      setBookings([]);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBookings().catch((err) => {
+      console.error("Error fetching bookings:", err);
+    });
+  }, [fetchBookings]);
+
+  return {
+    bookings,
+    loading,
+    error,
+    refetch: fetchBookings,
   };
 }
 
