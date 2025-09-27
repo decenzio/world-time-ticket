@@ -128,15 +128,21 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
       console.log('Step 5: Wallet address:', finalPayload.address)
       console.log('Step 5: User info:', userInfo)
       
-      const signInResult = await signIn('wallet', {
+      const credentials = {
         walletAddress: finalPayload.address,
-        username: userInfo.username,
-        profilePictureUrl: userInfo.profilePictureUrl,
-        permissions: userInfo.permissions ? JSON.stringify(userInfo.permissions) : undefined,
-        optedIntoOptionalAnalytics: userInfo.optedIntoOptionalAnalytics?.toString(),
-        worldAppVersion: userInfo.worldAppVersion?.toString(),
-        deviceOS: userInfo.deviceOS,
+        username: (userInfo as any)?.username ?? null,
+        profilePictureUrl: (userInfo as any)?.profilePictureUrl ?? null,
+        permissions: (userInfo as any)?.permissions ? JSON.stringify((userInfo as any).permissions) : undefined,
+        optedIntoOptionalAnalytics: (userInfo as any)?.optedIntoOptionalAnalytics?.toString() ?? "false",
+        worldAppVersion: (userInfo as any)?.worldAppVersion?.toString() ?? undefined,
+        deviceOS: (userInfo as any)?.deviceOS ?? null,
         verificationLevel: "device",
+      }
+
+      console.log('Step 5: Credentials being sent:', credentials)
+
+      const signInResult = await signIn('wallet', {
+        ...credentials,
         redirect: false,
       })
       

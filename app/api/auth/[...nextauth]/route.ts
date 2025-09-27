@@ -14,37 +14,54 @@ export const authOptions: NextAuthOptions = {
         optedIntoOptionalAnalytics: { label: "Analytics Opt-in", type: "text" },
         worldAppVersion: { label: "World App Version", type: "text" },
         deviceOS: { label: "Device OS", type: "text" },
-        worldIdProof: { label: "World ID Proof", type: "text" },
         verificationLevel: { label: "Verification Level", type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.walletAddress) {
+        // Ensure we have at least the wallet address
+        if (!credentials?.walletAddress || typeof credentials.walletAddress !== 'string') {
           console.error("No wallet address provided")
           return null
         }
 
         try {
+          // Safely parse optional fields (strings only)
+          const stringOrUndefined = (value: unknown): string | undefined =>
+            typeof value === 'string' && value.trim() !== '' ? value : undefined
+
+          const toBoolean = (value: unknown): boolean => value === 'true'
+
+          let parsedPermissions: any | undefined
+          try {
+            parsedPermissions = credentials.permissions && typeof credentials.permissions === 'string'
+              ? JSON.parse(credentials.permissions)
+              : undefined
+          } catch (e) {
+            console.warn('Invalid permissions JSON provided to credentials; ignoring')
+            parsedPermissions = undefined
+          }
+
           // Create a user object from the wallet authentication
           const user = {
-            id: credentials.walletAddress,
-            name: credentials.username || credentials.walletAddress,
+            id: credentials.walletAddress as string,
+            name: stringOrUndefined(credentials.username) || (credentials.walletAddress as string),
             email: null,
-            image: credentials.profilePictureUrl || null,
-            verificationLevel: credentials.verificationLevel || "device",
-            walletAddress: credentials.walletAddress,
-            username: credentials.username || null,
-            profilePictureUrl: credentials.profilePictureUrl || null,
-            permissions: credentials.permissions ? JSON.parse(credentials.permissions) : undefined,
-            optedIntoOptionalAnalytics: credentials.optedIntoOptionalAnalytics === "true",
-            worldAppVersion: credentials.worldAppVersion ? parseInt(credentials.worldAppVersion) : undefined,
-            deviceOS: credentials.deviceOS || null,
-            worldIdProof: credentials.worldIdProof || null,
+            image: stringOrUndefined(credentials.profilePictureUrl) || null,
+            verificationLevel: stringOrUndefined(credentials.verificationLevel) || "device",
+            walletAddress: credentials.walletAddress as string,
+            username: stringOrUndefined(credentials.username) || null,
+            profilePictureUrl: stringOrUndefined(credentials.profilePictureUrl) || null,
+            permissions: parsedPermissions,
+            optedIntoOptionalAnalytics: toBoolean(credentials.optedIntoOptionalAnalytics),
+            worldAppVersion: typeof credentials.worldAppVersion === 'string' && credentials.worldAppVersion.trim() !== ''
+              ? parseInt(credentials.worldAppVersion, 10)
+              : undefined,
+            deviceOS: stringOrUndefined(credentials.deviceOS) || null,
           }
 
           console.log("User authorized:", { 
             id: user.id, 
             verificationLevel: user.verificationLevel,
-            hasWorldIdProof: !!user.worldIdProof 
+            hasPermissions: !!user.permissions
           })
 
           return user
@@ -67,7 +84,6 @@ export const authOptions: NextAuthOptions = {
         token.deviceOS = user.deviceOS
         token.verificationLevel = user.verificationLevel
         token.worldId = user.id
-        token.worldIdProof = (user as any).worldIdProof
       }
       return token
     },
@@ -82,7 +98,6 @@ export const authOptions: NextAuthOptions = {
         session.user.worldAppVersion = token.worldAppVersion as number || undefined
         session.user.deviceOS = token.deviceOS as string || null
         session.user.verificationLevel = token.verificationLevel as string || "device"
-        session.user.worldIdProof = token.worldIdProof as string || null
       }
       return session
     },
