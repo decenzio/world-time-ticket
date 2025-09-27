@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react"
 import {useRouter} from "next/navigation"
-import {useSession} from "next-auth/react"
+import {useSession, getSession} from "next-auth/react"
 import {statisticsService} from "@/lib/services"
 import {Button} from "@/components/ui/button"
 import {Card, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
@@ -27,7 +27,6 @@ export default function MiniApp() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [statsError, setStatsError] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<AppView>('home')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<string[]>([])
 
@@ -54,17 +53,31 @@ export default function MiniApp() {
   }, [])
 
   useEffect(() => {
-    // Update authentication state based on session
-    setIsAuthenticated(!!session?.user)
-    console.log('MiniApp - Session status:', status, 'Authenticated:', !!session?.user)
+    // Log session changes for debugging
+    console.log('MiniApp - Session status:', status, 'User:', session?.user ? 'Present' : 'None')
+    if (session?.user) {
+      console.log('MiniApp - User details:', {
+        id: session.user.id,
+        username: session.user.username,
+        walletAddress: session.user.walletAddress,
+        verificationLevel: session.user.verificationLevel
+      })
+    }
   }, [session, status])
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = async () => {
     console.log('MiniApp - Authentication successful')
     setAuthError(null)
-    setIsAuthenticated(true)
     setCurrentView('home')
     setDebugInfo(prev => [...prev, 'Authentication successful'])
+    
+    // Force a session refresh to ensure the UI updates
+    try {
+      const updatedSession = await getSession()
+      console.log('MiniApp - Session refreshed:', updatedSession)
+    } catch (error) {
+      console.error('MiniApp - Error refreshing session:', error)
+    }
   }
 
   const handleAuthError = (error: string) => {
@@ -89,7 +102,7 @@ export default function MiniApp() {
   }
 
   const renderView = () => {
-    if (!isAuthenticated) {
+    if (!session?.user) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
           <div className="container mx-auto px-4 py-8">
@@ -365,10 +378,20 @@ export default function MiniApp() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading Mini App...</p>
+          <p className="text-xs text-muted-foreground mt-2">Status: {status}</p>
         </div>
       </div>
     )
   }
+
+  // Debug information
+  console.log('MiniApp - Render state:', {
+    status,
+    hasSession: !!session,
+    hasUser: !!session?.user,
+    currentView,
+    authError
+  })
 
   return renderView()
 }
