@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,6 +29,7 @@ interface SellerProfile {
 export default function SellerSetupPage() {
   const router = useRouter()
   const { user, profile: userProfile } = useAuth()
+  const { data: session } = useSession()
   const [profile, setProfile] = useState<SellerProfile>({
     name: userProfile?.full_name || "",
     bio: userProfile?.bio || "",
@@ -61,7 +63,7 @@ export default function SellerSetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) {
+    if (!session?.user?.id) {
       setError("Please log in to create a seller profile")
       return
     }
@@ -82,7 +84,7 @@ export default function SellerSetupPage() {
     try {
       // First, update the user profile with name and bio
       if (profile.name !== userProfile?.full_name || profile.bio !== userProfile?.bio) {
-        const profileResult = await profileService.updateProfile(user.id, {
+        const profileResult = await profileService.updateProfile(session.user.id, {
           full_name: profile.name,
           bio: profile.bio,
         })
@@ -94,7 +96,7 @@ export default function SellerSetupPage() {
 
       // Then, create the person profile for selling
       const personResult = await peopleService.createPerson({
-        user_id: user.id,
+        user_id: session.user.id,
         hourly_rate: profile.hourlyRate,
         currency: profile.currency,
         calendly_url: profile.calendlyUrl,
