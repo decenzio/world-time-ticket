@@ -15,7 +15,7 @@ interface WorldIDAuthProps {
   signal?: string
 }
 
-export function WorldIDAuth({ onSuccess, onError, action = "verify-human", signal }: WorldIDAuthProps) {
+export function WorldIDAuth({ onSuccess, onError, action, signal }: WorldIDAuthProps) {
   const [isVerifying, setIsVerifying] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
   const [verificationData, setVerificationData] = useState<any>(null)
@@ -38,8 +38,11 @@ export function WorldIDAuth({ onSuccess, onError, action = "verify-human", signa
     setIsVerifying(true)
 
     try {
+      // Use the action ID from environment variables or fallback to default
+      const actionId = action || process.env.NEXT_PUBLIC_WORLD_ID_ACTION_ID || "verify-human"
+      
       const payload = {
-        action,
+        action: actionId,
         signal,
         verification_level: VerificationLevel.Orb, // Require orb verification for marketplace
       }

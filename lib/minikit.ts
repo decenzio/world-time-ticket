@@ -26,18 +26,31 @@ export class MiniKitService {
     if (this.isInitialized) return true
 
     // Check if running in World App
-    if (typeof window === "undefined") return false
+    if (typeof window === "undefined") {
+      console.log("MiniKit: Not in browser environment")
+      return false
+    }
 
     try {
       // Check if we're in an iframe (World App environment)
       this.isInIframe = window.self !== window.top
+      console.log("MiniKit: In iframe:", this.isInIframe)
+
+      // Check if MiniKit is already available
+      console.log("MiniKit: isInstalled() before wait:", MiniKit.isInstalled())
 
       // Wait for MiniKit to be available
       let attempts = 0
       while (!MiniKit.isInstalled() && attempts < 50) {
         await new Promise((resolve) => setTimeout(resolve, 100))
         attempts++
+        if (attempts % 10 === 0) {
+          console.log(`MiniKit: Waiting... attempt ${attempts}/50`)
+        }
       }
+
+      console.log("MiniKit: isInstalled() after wait:", MiniKit.isInstalled())
+      console.log("MiniKit: Total attempts:", attempts)
 
       if (!MiniKit.isInstalled()) {
         console.warn("MiniKit not available - running outside World App")
@@ -45,6 +58,7 @@ export class MiniKitService {
       }
 
       this.isInitialized = true
+      console.log("MiniKit: Successfully initialized")
       return true
     } catch (error) {
       console.error("Failed to initialize MiniKit:", error)
