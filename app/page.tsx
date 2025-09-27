@@ -160,14 +160,25 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col items-center gap-4">
-              <Button
-                onClick={handleWorldIDAuth}
-                disabled={isLoading || !miniKitAvailable}
-                size="lg"
-                className="text-lg px-8 py-6"
-              >
-                {isLoading ? "Verifying..." : miniKitAvailable ? "Verify with World ID" : "Open in World App"}
-              </Button>
+              {miniKitAvailable ? (
+                <Button
+                  onClick={handleWorldIDAuth}
+                  disabled={isLoading}
+                  size="lg"
+                  className="text-lg px-8 py-6"
+                >
+                  {isLoading ? "Verifying..." : "Verify with World ID"}
+                </Button>
+              ) : (
+                <div className="text-center">
+                  <div className="text-lg text-muted-foreground mb-2">
+                    Open in World App to continue
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    This app requires World App for authentication
+                  </div>
+                </div>
+              )}
               
               {miniKitAvailable && miniKit.isInWorldApp() && (
                 <div className="text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-200">
