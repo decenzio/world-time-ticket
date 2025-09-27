@@ -1,12 +1,13 @@
 import type React from "react"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import { SessionProvider } from "./providers/session-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "WorldTimeTicket - Time Marketplace",
-  description: "Connect with people and sell your time on World App",
+  description: "Connect with people and sell your time with World ID authentication",
   generator: 'v0.app'
 }
 
@@ -38,7 +39,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <SessionProvider>
+          {children}
+        </SessionProvider>
+      </body>
     </html>
   )
 }
