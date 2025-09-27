@@ -3,9 +3,8 @@
 import {useEffect, useState} from "react"
 import {Button} from "@/components/ui/button"
 import {Loader2, Shield, Wallet} from "lucide-react"
-import {signIn, useSession} from "next-auth/react"
+import {signIn} from "next-auth/react"
 import {MiniKit} from "@worldcoin/minikit-js"
-import {useRouter} from "next/navigation"
 
 interface WalletAuthProps {
   onError?: (error: string) => void
@@ -15,8 +14,6 @@ interface WalletAuthProps {
 export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
-  const router = useRouter()
-  const { update } = useSession()
 
   useEffect(() => {
     // Check if MiniKit is available
@@ -79,12 +76,15 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
       console.log('Step 2: Final payload:', finalPayload)
       
       if (!finalPayload) {
-        throw new Error('finalPayload is undefined in wallet auth result')
+        console.error('finalPayload is undefined in wallet auth result')
+        onError?.('Authentication failed: Invalid response from wallet')
+        return
       }
 
       if (finalPayload.status === 'error') {
-        console.error('Wallet auth error:', finalPayload.error)
-        throw new Error(finalPayload.error || 'Authentication failed')
+        console.error('Wallet auth error:', finalPayload.error_code, finalPayload.details)
+        onError?.(finalPayload.details || 'Authentication failed')
+        return
       }
 
       // Step 3: Verify the SIWE message
@@ -106,7 +106,8 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
 
       if (!verificationResult.isValid) {
         console.error('SIWE verification failed:', verificationResult.message)
-        throw new Error(verificationResult.message || 'Verification failed')
+        onError?.(verificationResult.message || 'Verification failed')
+        return
       }
 
       // Step 4: Get user info from MiniKit if available
@@ -150,7 +151,8 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
 
       if (signInResult?.error) {
         console.error('NextAuth signIn error:', signInResult.error)
-        throw new Error(signInResult.error)
+        onError?.(signInResult.error)
+        return
       }
 
       // Successful login - trigger callbacks
