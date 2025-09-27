@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState} from "react"
+import {useEffect, useState, useRef} from "react"
 import {useParams, useRouter} from "next/navigation"
 import {Button} from "@/components/ui/button"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
@@ -54,6 +54,81 @@ export default function BookingPage() {
       mounted = false
     }
   }, [sellerId])
+
+  // Load Calendly widget script and handle event when a time is scheduled
+  useEffect(() => {
+    if (!seller?.calendlyUrl) return
+
+    const cssHref = "https://assets.calendly.com/assets/external/widget.css"
+    if (!document.querySelector(`link[href="${cssHref}"]`)) {
+      const link = document.createElement("link")
+      link.rel = "stylesheet"
+      link.href = cssHref
+      document.head.appendChild(link)
+    }
+
+    const scriptSrc = "https://assets.calendly.com/assets/external/widget.js"
+    if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
+      const script = document.createElement("script")
+      script.src = scriptSrc
+      script.async = true
+      document.body.appendChild(script)
+    }
+
+    const handleCalendlyMessage = async (e: MessageEvent) => {
+      const data: any = (e && (e as any).data) || null
+      if (!data || data.event !== "calendly.event_scheduled") return
+
+      try {
+        let calendlyEventId: string | undefined
+        let scheduledDate: string | undefined
+
+        // Try mock API to get structured event payload in development
+        try {
+          const res = await fetch("/api/calendly", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uri: data?.payload?.event?.uri,
+              invitee_name: data?.payload?.invitee?.name,
+            }),
+          })
+          if (res.ok) {
+            const json = await res.json()
+            calendlyEventId = json?.event?.id
+            scheduledDate = json?.event?.start_time
+          }
+        } catch (err) {
+          // ignore mock failures in production
+        }
+
+        // Fallback: derive event id from Calendly URIs if present
+        if (!calendlyEventId) {
+          const uri: string | undefined = data?.payload?.event?.uri || data?.payload?.invitee?.uri
+          if (uri) {
+            calendlyEventId = uri.split("/").pop()
+          }
+        }
+
+        const existing = localStorage.getItem("pendingBooking")
+        const pending = existing ? JSON.parse(existing) : {}
+        const updated = {
+          ...pending,
+          calendlyEventId,
+          scheduledDate,
+        }
+        localStorage.setItem("pendingBooking", JSON.stringify(updated))
+
+        // Navigate user to payment
+        router.push(`/payment/${sellerId}`)
+      } catch (error) {
+        console.error("Calendly schedule handler error:", error)
+      }
+    }
+
+    window.addEventListener("message", handleCalendlyMessage)
+    return () => window.removeEventListener("message", handleCalendlyMessage)
+  }, [seller?.calendlyUrl, router, sellerId])
 
   const handleProceedToPayment = () => {
     if (!seller) return
@@ -177,18 +252,22 @@ export default function BookingPage() {
                 <CardDescription>Book a time slot that works for you</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">Ready to Schedule?</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Click below to open {seller.name}'s Calendly page and choose an available time
-                  </p>
-                  <Button onClick={handleOpenCalendly} className="gap-2">
-                    <ExternalLink className="w-4 h-4" />
-                    Open Calendly
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">Opens in a new tab</p>
-                </div>
+                {seller.calendlyUrl ? (
+                  <div className="space-y-4">
+                    <div
+                      className="calendly-inline-widget"
+                      data-url={seller.calendlyUrl}
+                      style={{ minWidth: "320px", height: "700px" }}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Scheduling powered by Calendly. Once scheduled, you'll be taken to payment.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    This person has not set a Calendly URL.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

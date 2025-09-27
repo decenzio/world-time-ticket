@@ -17,6 +17,8 @@ interface BookingDetails {
   hourlyRate: number
   currency: "WLD" | "USDC"
   sessionNotes: string
+  scheduledDate?: string
+  calendlyEventId?: string
 }
 
 interface PaymentState {
@@ -84,6 +86,8 @@ export default function PaymentPage() {
         hourly_rate: booking.hourlyRate,
         currency: booking.currency,
         total_amount: booking.hourlyRate, // 1 hour session
+        ...(booking.scheduledDate ? { scheduled_date: booking.scheduledDate } : {}),
+        ...(booking.calendlyEventId ? { calendly_event_id: booking.calendlyEventId } : {}),
       })
       if (!createRes.success) {
         setPaymentState({

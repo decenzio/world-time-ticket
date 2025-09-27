@@ -41,6 +41,8 @@ export interface CreateBookingInput {
   hourly_rate: number;
   currency: "WLD" | "USDC";
   total_amount: number;
+  scheduled_date?: string;
+  calendly_event_id?: string;
 }
 
 export interface CreateReviewInput {
