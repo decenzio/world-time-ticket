@@ -82,21 +82,43 @@ export default function SellerSetupPage() {
     setError(null)
 
     try {
-      // First, update the user profile with name and bio
-      if (profile.name !== userProfile?.full_name || profile.bio !== userProfile?.bio) {
-        const profileResult = await profileService.updateProfile(session.user.id, {
-          full_name: profile.name,
-          bio: profile.bio,
-        })
+      // Ensure we have/create a Supabase user mapped to wallet address
+      const syncRes = await fetch('/api/sync-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: session.user.walletAddress,
+          username: session.user.username,
+          profilePictureUrl: session.user.profilePictureUrl,
+        }),
+      })
+      const syncJson = await syncRes.json()
+      if (!syncRes.ok || !syncJson?.ok || !syncJson?.userId) {
+        throw new Error(syncJson?.error || 'Failed to map wallet to user')
+      }
+      const supabaseUserId: string = syncJson.userId
 
-        if (!profileResult.success) {
-          throw new Error(profileResult.error?.message || "Failed to update profile")
+      // Update profile with name and bio using API call
+      if (profile.name !== userProfile?.full_name || profile.bio !== userProfile?.bio) {
+        const updateRes = await fetch('/api/update-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: supabaseUserId,
+            full_name: profile.name,
+            bio: profile.bio,
+          }),
+        })
+        
+        if (!updateRes.ok) {
+          const errorData = await updateRes.json()
+          throw new Error(`Database operation failed: ${errorData.error || "Failed to update profile"}`)
         }
       }
 
       // Then, create the person profile for selling
       const personResult = await peopleService.createPerson({
-        user_id: session.user.id,
+        user_id: supabaseUserId,
         hourly_rate: profile.hourlyRate,
         currency: profile.currency,
         calendly_url: profile.calendlyUrl,

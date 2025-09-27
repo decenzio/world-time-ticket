@@ -49,6 +49,23 @@ export const updateProfile = async (
 ): Promise<Result<Profile>> => {
   return asyncResult(async () => {
     const client = getSupabase({ admin: true });
+    
+    // First check if profile exists
+    const { data: existingProfile, error: fetchError } = await (client as any)
+      .from("profiles")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new DatabaseError(`Check profile failed: ${fetchError.message}`);
+    }
+
+    if (!existingProfile) {
+      throw new NotFoundError("Profile", id);
+    }
+
+    // Update the profile
     const { data, error } = await (client as any)
       .from("profiles")
       .update(updates)
@@ -163,6 +180,21 @@ export const createPerson = async (
     }
 
     const client = getSupabase({ admin: true });
+    
+    // Check if user already has a person profile
+    const { data: existingPerson, error: checkError } = await (client as any)
+      .from("people")
+      .select("id")
+      .eq("user_id", input.user_id)
+      .maybeSingle();
+
+    if (checkError) {
+      throw new DatabaseError(`Check existing person failed: ${checkError.message}`);
+    }
+
+    if (existingPerson) {
+      throw new ValidationError("User already has a person profile", "user_id");
+    }
     const { data, error } = await (client as any)
       .from("people")
       .insert([input])
@@ -182,6 +214,23 @@ export const updatePerson = async (
 ): Promise<Result<Person>> => {
   return asyncResult(async () => {
     const client = getSupabase({ admin: true });
+    
+    // First check if person exists
+    const { data: existingPerson, error: fetchError } = await (client as any)
+      .from("people")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new DatabaseError(`Check person failed: ${fetchError.message}`);
+    }
+
+    if (!existingPerson) {
+      throw new NotFoundError("Person", id);
+    }
+
+    // Update the person
     const { data, error } = await (client as any)
       .from("people")
       .update(updates)
@@ -287,6 +336,26 @@ export const createBooking = async (
     }
 
     const client = getSupabase({ admin: true });
+    
+    // Verify person exists and is active
+    const { data: person, error: personError } = await (client as any)
+      .from("people")
+      .select("id, is_active")
+      .eq("id", input.person_id)
+      .maybeSingle();
+
+    if (personError) {
+      throw new DatabaseError(`Check person failed: ${personError.message}`);
+    }
+
+    if (!person) {
+      throw new NotFoundError("Person", input.person_id);
+    }
+
+    if (!person.is_active) {
+      throw new ValidationError("Cannot book inactive person");
+    }
+
     const { data, error } = await (client as any)
       .from("bookings")
       .insert([input])
@@ -306,6 +375,23 @@ export const updateBookingStatus = async (
 ): Promise<Result<Booking>> => {
   return asyncResult(async () => {
     const client = getSupabase({ admin: true });
+    
+    // First check if booking exists
+    const { data: existingBooking, error: fetchError } = await (client as any)
+      .from("bookings")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError) {
+      throw new DatabaseError(`Check booking failed: ${fetchError.message}`);
+    }
+
+    if (!existingBooking) {
+      throw new NotFoundError("Booking", id);
+    }
+
+    // Update the booking status
     const { data, error } = await (client as any)
       .from("bookings")
       .update({ status })
@@ -465,6 +551,49 @@ export const createReview = async (
     }
 
     const client = getSupabase({ admin: true });
+    
+    // Check if review already exists for this booking
+    const { data: existingReview, error: checkError } = await (client as any)
+      .from("reviews")
+      .select("id")
+      .eq("booking_id", input.booking_id)
+      .maybeSingle();
+
+    if (checkError) {
+      throw new DatabaseError(`Check existing review failed: ${checkError.message}`);
+    }
+
+    if (existingReview) {
+      throw new ValidationError("Review already exists for this booking", "booking_id");
+    }
+
+    // Verify booking exists and is completed
+    const { data: booking, error: bookingError } = await (client as any)
+      .from("bookings")
+      .select("id, status, client_id, person_id")
+      .eq("id", input.booking_id)
+      .maybeSingle();
+
+    if (bookingError) {
+      throw new DatabaseError(`Check booking failed: ${bookingError.message}`);
+    }
+
+    if (!booking) {
+      throw new NotFoundError("Booking", input.booking_id);
+    }
+
+    if (booking.status !== "completed") {
+      throw new ValidationError("Can only review completed bookings");
+    }
+
+    if (booking.client_id !== input.client_id) {
+      throw new ValidationError("Client ID does not match booking");
+    }
+
+    if (booking.person_id !== input.person_id) {
+      throw new ValidationError("Person ID does not match booking");
+    }
+
     const { data, error } = await (client as any)
       .from("reviews")
       .insert([input])
