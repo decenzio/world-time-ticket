@@ -1,7 +1,7 @@
 "use client"
 
 import {useEffect, useState} from "react"
-import {useParams, useRouter} from "next/navigation"
+import {useRouter} from "next/navigation"
 import {miniKit} from "@/lib/minikit"
 import {Button} from "@/components/ui/button"
 import {useAuth} from "@/lib/hooks"
@@ -9,6 +9,7 @@ import {bookingService} from "@/lib/services"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {AlertCircle, ArrowLeft, CheckCircle, Clock, DollarSign, Shield} from "lucide-react"
+import {Tokens} from "@worldcoin/minikit-js"
 
 interface BookingDetails {
   sellerId: string
@@ -27,8 +28,6 @@ interface PaymentState {
 
 export default function PaymentPage() {
   const router = useRouter()
-  const params = useParams()
-  const sellerId = params.sellerId as string
   const { user } = useAuth()
 
   const [booking, setBooking] = useState<BookingDetails | null>(null)
@@ -50,10 +49,20 @@ export default function PaymentPage() {
 
     // Initialize MiniKit
     const initMiniKit = async () => {
-      const available = await miniKit.initialize()
-      setMiniKitAvailable(available)
+      try {
+        const available = await miniKit.initialize()
+        setMiniKitAvailable(available)
+      } catch (error) {
+        console.error("Failed to initialize MiniKit:", error)
+        setMiniKitAvailable(false)
+      }
     }
-    initMiniKit()
+    
+    // Properly handle the async call
+    initMiniKit().catch((error) => {
+      console.error("Failed to initialize MiniKit:", error)
+      setMiniKitAvailable(false)
+    })
   }, [router])
 
   const handlePayment = async () => {
@@ -76,8 +85,19 @@ export default function PaymentPage() {
         currency: booking.currency,
         total_amount: booking.hourlyRate, // 1 hour session
       })
-      if (!createRes.success || !createRes.data) {
-        throw createRes.error || new Error("Failed to create booking")
+      if (!createRes.success) {
+        setPaymentState({
+          status: "error",
+          message: createRes.error?.message || "Failed to create booking",
+        })
+        return
+      }
+      if (!createRes.data) {
+        setPaymentState({
+          status: "error",
+          message: "Failed to create booking - no data returned",
+        })
+        return
       }
       const createdBooking = createRes.data
 
@@ -89,7 +109,7 @@ export default function PaymentPage() {
         to: "0x...", // Escrow contract address
         tokens: [
           {
-            symbol: selectedCurrency,
+            symbol: selectedCurrency === "WLD" ? Tokens.WLD : Tokens.USDC,
             token_amount: booking.hourlyRate.toString(),
           },
         ],
@@ -124,7 +144,11 @@ export default function PaymentPage() {
           router.push(`/booking-confirmation/${createdBooking.id}`)
         }, 3000)
       } else {
-        throw new Error(paymentResponse.error_code || "Payment failed")
+        setPaymentState({
+          status: "error",
+          message: paymentResponse.error_code || "Payment failed",
+        })
+        return
       }
     } catch (error) {
       console.error("Payment error:", error)
