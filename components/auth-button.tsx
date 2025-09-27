@@ -1,8 +1,9 @@
 "use client"
 
-import { signIn, signOut, useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Shield, LogOut, LogIn } from "lucide-react"
+import { Shield, LogOut, Wallet } from "lucide-react"
+import { WalletAuth } from "./wallet-auth"
 
 export function AuthButton() {
   const { data: session, status } = useSession()
@@ -22,10 +23,10 @@ export function AuthButton() {
       <div className="flex items-center gap-2">
         <div className="text-sm">
           <div className="font-medium">
-            {session.user.name || session.user.email || "User"}
+            {session.user.username || session.user.walletAddress || "User"}
           </div>
           <div className="text-xs text-muted-foreground">
-            {session.user.verificationLevel === "orb" ? "Orb Verified" : "Verified"}
+            {session.user.verificationLevel === "orb" ? "Orb Verified" : "Wallet Verified"}
           </div>
         </div>
         <Button
@@ -40,13 +41,5 @@ export function AuthButton() {
     )
   }
 
-  return (
-    <Button
-      onClick={() => signIn("worldcoin")}
-      className="gap-2"
-    >
-      <Shield className="w-4 h-4" />
-      Sign in with World ID
-    </Button>
-  )
+  return <WalletAuth />
 }

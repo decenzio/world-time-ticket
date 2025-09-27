@@ -1,39 +1,70 @@
 import NextAuth, { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    {
-      id: "worldcoin",
-      name: "Worldcoin",
-      type: "oauth",
-      wellKnown: "https://id.worldcoin.org/.well-known/openid-configuration",
-      authorization: { params: { scope: "openid" } },
-      clientId: process.env.WLD_CLIENT_ID,
-      clientSecret: process.env.WLD_CLIENT_SECRET,
-      idToken: true,
-      checks: ["state", "nonce", "pkce"],
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.sub,
-          email: profile.email,
-          image: profile.picture,
-          verificationLevel: profile["https://id.worldcoin.org/v1"]?.verification_level || "unknown",
-        }
+    CredentialsProvider({
+      id: "wallet",
+      name: "Wallet",
+      credentials: {
+        walletAddress: { label: "Wallet Address", type: "text" },
+        username: { label: "Username", type: "text" },
+        profilePictureUrl: { label: "Profile Picture URL", type: "text" },
+        permissions: { label: "Permissions", type: "text" },
+        optedIntoOptionalAnalytics: { label: "Analytics Opt-in", type: "text" },
+        worldAppVersion: { label: "World App Version", type: "text" },
+        deviceOS: { label: "Device OS", type: "text" },
       },
-    },
+      async authorize(credentials) {
+        if (!credentials?.walletAddress) {
+          return null
+        }
+
+        // Create a user object from the wallet authentication
+        const user = {
+          id: credentials.walletAddress,
+          name: credentials.username || credentials.walletAddress,
+          email: null,
+          image: credentials.profilePictureUrl || null,
+          verificationLevel: "device", // Wallet auth provides device-level verification
+          walletAddress: credentials.walletAddress,
+          username: credentials.username,
+          profilePictureUrl: credentials.profilePictureUrl,
+          permissions: credentials.permissions ? JSON.parse(credentials.permissions) : undefined,
+          optedIntoOptionalAnalytics: credentials.optedIntoOptionalAnalytics === "true",
+          worldAppVersion: credentials.worldAppVersion ? parseInt(credentials.worldAppVersion) : undefined,
+          deviceOS: credentials.deviceOS,
+        }
+
+        return user
+      },
+    }),
   ],
   callbacks: {
-    async jwt({ token, account, profile }) {
-      if (account && profile) {
-        token.verificationLevel = profile["https://id.worldcoin.org/v1"]?.verification_level || "unknown"
-        token.worldId = profile.sub
+    async jwt({ token, user }) {
+      if (user) {
+        token.walletAddress = user.walletAddress
+        token.username = user.username
+        token.profilePictureUrl = user.profilePictureUrl
+        token.permissions = user.permissions
+        token.optedIntoOptionalAnalytics = user.optedIntoOptionalAnalytics
+        token.worldAppVersion = user.worldAppVersion
+        token.deviceOS = user.deviceOS
+        token.verificationLevel = user.verificationLevel
+        token.worldId = user.id
       }
       return token
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.worldId as string
+        session.user.walletAddress = token.walletAddress as string
+        session.user.username = token.username as string
+        session.user.profilePictureUrl = token.profilePictureUrl as string
+        session.user.permissions = token.permissions as any
+        session.user.optedIntoOptionalAnalytics = token.optedIntoOptionalAnalytics as boolean
+        session.user.worldAppVersion = token.worldAppVersion as number
+        session.user.deviceOS = token.deviceOS as string
         session.user.verificationLevel = token.verificationLevel as string
       }
       return session

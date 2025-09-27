@@ -2,6 +2,7 @@ import type React from "react"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { SessionProvider } from "./providers/session-provider"
+import { MiniKitProvider } from "@/components/minikit-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -40,9 +41,11 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        <MiniKitProvider>
+          <SessionProvider>
+            {children}
+          </SessionProvider>
+        </MiniKitProvider>
       </body>
     </html>
   )
