@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Shield, LogOut, Wallet } from "lucide-react"
 import { WalletAuth } from "./wallet-auth"
 
-export function AuthButton() {
+interface AuthButtonProps {
+  onSuccess?: () => void
+  onError?: (error: string) => void
+}
+
+export function AuthButton({ onSuccess, onError }: AuthButtonProps = {}) {
   const { data: session, status } = useSession()
   const loading = status === "loading"
 
@@ -45,10 +50,11 @@ export function AuthButton() {
     <WalletAuth 
       onSuccess={() => {
         console.log('Authentication successful!')
+        onSuccess?.()
       }}
       onError={(error) => {
         console.error('Authentication error:', error)
-        // You could add toast notifications here
+        onError?.(error)
       }}
     />
   )
