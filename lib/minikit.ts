@@ -1,4 +1,4 @@
-import { MiniKit, WorldIDAuthPayload, PayCommandInput, ResponseEvent } from '@worldcoin/minikit-js'
+import { MiniKit, VerifyCommandInput, PayCommandInput, ResponseEvent, VerificationLevel } from '@worldcoin/minikit-js'
 
 export interface PaymentPayload {
   reference: string
@@ -60,19 +60,19 @@ export class MiniKitService {
     return this.isInIframe && this.isAvailable()
   }
 
-  async worldIdAuth(payload: WorldIDAuthPayload): Promise<any> {
+  async verify(payload: VerifyCommandInput): Promise<any> {
     if (!this.isAvailable()) {
       throw new Error("MiniKit not available")
     }
 
     try {
-      const result = await MiniKit.commandsAsync.worldIdAuth(payload)
+      const result = await MiniKit.commandsAsync.verify(payload)
       return {
         success: true,
         ...result
       }
     } catch (error) {
-      console.error("World ID auth failed:", error)
+      console.error("World ID verification failed:", error)
       return {
         success: false,
         error: error instanceof Error ? error.message : "Verification failed"

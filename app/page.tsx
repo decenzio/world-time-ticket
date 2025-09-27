@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { miniKit } from "@/lib/minikit"
+import { VerificationLevel } from '@worldcoin/minikit-js'
 import { statisticsService } from "@/lib/services"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -104,10 +105,10 @@ export default function HomePage() {
 
     setIsLoading(true)
     try {
-      const response = await miniKit.worldIdAuth({
+      const response = await miniKit.verify({
         action: "verify-human",
         signal: "timeslot-marketplace-auth",
-        verification_level: "orb",
+        verification_level: VerificationLevel.Orb,
       })
 
       if (response.success) {
