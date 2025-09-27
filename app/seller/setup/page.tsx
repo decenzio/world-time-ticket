@@ -118,18 +118,22 @@ export default function SellerSetupPage() {
         }
       }
 
-      // Then, create the person profile for selling
-      const personResult = await peopleService.createPerson({
-        user_id: supabaseUserId,
-        hourly_rate: profile.hourlyRate,
-        currency: profile.currency,
-        calendly_url: profile.calendlyUrl,
-        skills: profile.skills,
-        availability_status: profile.availability,
+      // Then, create the person profile for selling via server API (ensures admin client)
+      const createRes = await fetch('/api/people/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: supabaseUserId,
+          hourly_rate: profile.hourlyRate,
+          currency: profile.currency,
+          calendly_url: profile.calendlyUrl,
+          skills: profile.skills,
+          availability_status: profile.availability,
+        }),
       })
-
-      if (!personResult.success) {
-        setError(personResult.error?.message || "Failed to create seller profile")
+      const createJson = await createRes.json()
+      if (!createRes.ok || !createJson?.ok) {
+        setError(`Database operation failed: ${createJson?.error || 'Create person failed'}`)
         return
       }
 

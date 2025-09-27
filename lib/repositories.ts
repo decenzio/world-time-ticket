@@ -180,24 +180,11 @@ export const createPerson = async (
     }
 
     const client = getSupabase({ admin: true });
-    
-    // Check if user already has a person profile
-    const { data: existingPerson, error: checkError } = await (client as any)
-      .from("people")
-      .select("id")
-      .eq("user_id", input.user_id)
-      .maybeSingle();
 
-    if (checkError) {
-      throw new DatabaseError(`Check existing person failed: ${checkError.message}`);
-    }
-
-    if (existingPerson) {
-      throw new ValidationError("User already has a person profile", "user_id");
-    }
+    // Upsert by user_id: if a seller profile exists for this user, update it; otherwise create it
     const { data, error } = await (client as any)
       .from("people")
-      .insert([input])
+      .upsert(input as any, { onConflict: "user_id" })
       .select()
       .single();
 

@@ -4,50 +4,54 @@ import {profileService} from "@/lib/services"
 
 export async function POST(req: NextRequest) {
   try {
-    if (!supabaseAdmin) {
-      return NextResponse.json({
-        ok: false,
-        error: "Service role key missing. Set SUPABASE_SERVICE_ROLE_KEY in .env.local",
-      }, { status: 500 })
-    }
-
     const { walletAddress, username, profilePictureUrl } = await req.json()
 
     if (!walletAddress || typeof walletAddress !== 'string') {
       return NextResponse.json({ ok: false, error: "walletAddress is required" }, { status: 400 })
     }
 
+    // Require admin client (no mock fallback)
+    if (!supabaseAdmin) {
+      return NextResponse.json({ ok: false, error: "Supabase admin is not configured. Set SUPABASE_SERVICE_ROLE_KEY." }, { status: 500 })
+    }
+
     const normalizedAddress = (walletAddress as string).toLowerCase()
-    const pseudoEmail = `wallet-${normalizedAddress}@wallet.worldapp`
 
-    // Try to create an auth user tied to this wallet (idempotent by email)
-    const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email: pseudoEmail,
-      email_confirm: true,
-      user_metadata: {
-        walletAddress: normalizedAddress,
-        username: username || null,
-        avatar_url: profilePictureUrl || null,
-      },
-    })
-
+    // Profiles are keyed by id; match or create by wallet_address (email optional)
     let userId: string | null = null
 
-    if (createError) {
-      // Likely already exists. Look up the profile by email to fetch the UUID
-      const { data: existingProfile, error: profileError } = await supabaseAdmin
+    const { data: existingByWallet, error: findErr } = await (supabaseAdmin as any)
+      .from('profiles')
+      .select('id')
+      .eq('wallet_address', normalizedAddress)
+      .maybeSingle()
+
+    if (findErr) {
+      return NextResponse.json({ ok: false, error: findErr.message }, { status: 500 })
+    }
+
+    if (existingByWallet?.id) {
+      userId = existingByWallet.id
+      // best-effort metadata refresh
+      await (supabaseAdmin as any)
         .from('profiles')
-        .select('id')
-        .eq('email', pseudoEmail)
-        .maybeSingle() as { data: { id: string } | null; error: any }
-
-      if (profileError || !existingProfile) {
-        return NextResponse.json({ ok: false, error: createError.message }, { status: 500 })
-      }
-
-      userId = existingProfile.id
+        .update({ username: username || null, avatar_url: profilePictureUrl || null })
+        .eq('id', userId)
     } else {
-      userId = createData.user?.id ?? null
+      const { data: created, error: insertErr } = await (supabaseAdmin as any)
+        .from('profiles')
+        .insert({
+          wallet_address: normalizedAddress,
+          username: username || null,
+          full_name: username || null,
+          avatar_url: profilePictureUrl || null,
+        } as any)
+        .select('id')
+        .single()
+      if (insertErr || !created?.id) {
+        return NextResponse.json({ ok: false, error: insertErr?.message || 'Failed to create profile' }, { status: 500 })
+      }
+      userId = created.id
     }
 
     if (!userId) {
@@ -84,11 +88,12 @@ export async function POST(req: NextRequest) {
       // If profile still doesn't exist, try to create it manually
       if (updateResult?.error?.message?.includes('Profile') && updateResult?.error?.message?.includes('not found')) {
         try {
-          const { error: createError } = await supabaseAdmin
+          const { error: createError } = await (supabaseAdmin as any)
             .from('profiles')
             .insert({
               id: userId,
-              email: pseudoEmail,
+              wallet_address: normalizedAddress,
+              username: username || null,
               full_name: username || null,
               avatar_url: profilePictureUrl || null,
             } as any)
