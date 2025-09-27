@@ -383,6 +383,46 @@ export const findPersonByUserId = async (
   });
 };
 
+// Find all bookings (for statistics)
+export const findAllBookings = async (
+  filters: BookingFilters = {}
+): Promise<Result<BookingWithDetails[]>> => {
+  return asyncResult(async () => {
+    const client = getSupabase();
+    let query = (client as any)
+      .from("bookings")
+      .select(
+        `
+        *,
+        person:person_id (
+          *,
+          profiles:user_id (
+            full_name,
+            avatar_url
+          )
+        ),
+        profiles:client_id (
+          full_name,
+          avatar_url
+        )
+      `
+      );
+
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    const { data, error } = await query.order("created_at", {
+      ascending: false,
+    });
+
+    if (error) {
+      throw new DatabaseError(`Fetch all bookings failed: ${error.message}`);
+    }
+    return data as BookingWithDetails[];
+  });
+};
+
 // Review operations
 export const findReviewsByPersonId = async (
   personId: string

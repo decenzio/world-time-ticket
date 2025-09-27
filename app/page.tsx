@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { miniKit } from "@/lib/minikit"
+import { statisticsService } from "@/lib/services"
 import { Button } from "@/components/ui/button"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,12 +15,39 @@ interface User {
   isVerified: boolean
 }
 
+interface PlatformStats {
+  verifiedPeople: number
+  averageRating: number
+  sessionsBooked: number
+  successRate: number
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [miniKitAvailable, setMiniKitAvailable] = useState(false)
   const [isDevelopmentMode, setIsDevelopmentMode] = useState(false)
+  const [stats, setStats] = useState<PlatformStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [statsError, setStatsError] = useState<string | null>(null)
+
+  const fetchStats = async () => {
+    setStatsLoading(true)
+    setStatsError(null)
+    try {
+      const result = await statisticsService.getPlatformStats()
+      if (result.success) {
+        setStats(result.data)
+      } else {
+        setStatsError(result.error.message)
+      }
+    } catch (error) {
+      setStatsError(error instanceof Error ? error.message : 'Failed to fetch statistics')
+    } finally {
+      setStatsLoading(false)
+    }
+  }
 
   useEffect(() => {
     const savedUser = localStorage.getItem("timeSlot_user")
@@ -41,6 +69,9 @@ export default function HomePage() {
       }
     }
     initMiniKit()
+
+    // Fetch platform statistics
+    fetchStats()
   }, [])
 
   const handleDevLogin = () => {
@@ -244,22 +275,68 @@ export default function HomePage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
           <Card className="text-center p-6">
-            <div className="text-2xl font-bold text-primary">1,247</div>
+            <div className="text-2xl font-bold text-primary">
+              {statsLoading ? (
+                <div className="animate-pulse bg-muted h-8 w-16 mx-auto rounded"></div>
+              ) : statsError ? (
+                <span className="text-destructive">--</span>
+              ) : (
+                stats?.verifiedPeople.toLocaleString() || "0"
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">Verified People</div>
           </Card>
           <Card className="text-center p-6">
-            <div className="text-2xl font-bold text-accent">4.9</div>
+            <div className="text-2xl font-bold text-accent">
+              {statsLoading ? (
+                <div className="animate-pulse bg-muted h-8 w-12 mx-auto rounded"></div>
+              ) : statsError ? (
+                <span className="text-destructive">--</span>
+              ) : (
+                stats?.averageRating.toFixed(1) || "0.0"
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">Average Rating</div>
           </Card>
           <Card className="text-center p-6">
-            <div className="text-2xl font-bold text-success">12,450</div>
+            <div className="text-2xl font-bold text-success">
+              {statsLoading ? (
+                <div className="animate-pulse bg-muted h-8 w-20 mx-auto rounded"></div>
+              ) : statsError ? (
+                <span className="text-destructive">--</span>
+              ) : (
+                stats?.sessionsBooked.toLocaleString() || "0"
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">Sessions Booked</div>
           </Card>
           <Card className="text-center p-6">
-            <div className="text-2xl font-bold text-primary">98%</div>
+            <div className="text-2xl font-bold text-primary">
+              {statsLoading ? (
+                <div className="animate-pulse bg-muted h-8 w-12 mx-auto rounded"></div>
+              ) : statsError ? (
+                <span className="text-destructive">--</span>
+              ) : (
+                `${stats?.successRate || 0}%`
+              )}
+            </div>
             <div className="text-sm text-muted-foreground">Success Rate</div>
           </Card>
         </div>
+
+        {statsError && (
+          <div className="mt-4 text-center">
+            <p className="text-sm text-destructive mb-2">Failed to load statistics</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchStats}
+              disabled={statsLoading}
+            >
+              {statsLoading ? "Retrying..." : "Retry"}
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   )

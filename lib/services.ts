@@ -349,8 +349,57 @@ export class ReviewService {
   }
 }
 
+// Statistics service
+export class StatisticsService {
+  async getPlatformStats(): Promise<Result<{
+    verifiedPeople: number;
+    averageRating: number;
+    sessionsBooked: number;
+    successRate: number;
+  }>> {
+    return asyncResult(async () => {
+      // Get verified people count
+      const peopleResult = await repositories.findAllPeople({ isActive: true });
+      if (!peopleResult.success) {
+        throw peopleResult.error;
+      }
+      const verifiedPeople = peopleResult.data.length;
+
+      // Get average rating across all people
+      const allPeopleResult = await repositories.findAllPeople({});
+      if (!allPeopleResult.success) {
+        throw allPeopleResult.error;
+      }
+      
+      const totalReviews = allPeopleResult.data.reduce((sum, person) => sum + person.total_reviews, 0);
+      const averageRating = totalReviews > 0 
+        ? allPeopleResult.data.reduce((sum, person) => sum + (person.average_rating * person.total_reviews), 0) / totalReviews
+        : 0;
+
+      // Get sessions booked count
+      const bookingsResult = await repositories.findAllBookings({});
+      if (!bookingsResult.success) {
+        throw bookingsResult.error;
+      }
+      const sessionsBooked = bookingsResult.data.length;
+
+      // Calculate success rate (completed bookings / total bookings)
+      const completedBookings = bookingsResult.data.filter(booking => booking.status === 'completed').length;
+      const successRate = sessionsBooked > 0 ? (completedBookings / sessionsBooked) * 100 : 0;
+
+      return {
+        verifiedPeople,
+        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+        sessionsBooked,
+        successRate: Math.round(successRate), // Round to whole number
+      };
+    });
+  }
+}
+
 // Service instances (Dependency Injection ready)
 export const profileService = new ProfileService();
 export const peopleService = new PeopleService();
 export const bookingService = new BookingService();
 export const reviewService = new ReviewService();
+export const statisticsService = new StatisticsService();
