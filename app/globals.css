@@ -122,3 +122,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* World App iframe styles */
+.in-iframe {
+  /* Ensure proper scrolling in iframe */
+  overflow-x: hidden;
+}
+
+.in-iframe body {
+  /* Remove default margins/padding in iframe */
+  margin: 0;
+  padding: 0;
+  /* Ensure full height in iframe */
+  min-height: 100vh;
+  /* Prevent zoom on mobile in iframe */
+  touch-action: manipulation;
+}
+
+/* Optimize for mobile in iframe */
+@media (max-width: 768px) {
+  .in-iframe .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}

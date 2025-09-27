@@ -33,6 +33,12 @@ export default function HomePage() {
     const initMiniKit = async () => {
       const available = await miniKit.initialize()
       setMiniKitAvailable(available)
+      
+      // If we're in World App, automatically try to authenticate
+      if (available && miniKit.isInWorldApp()) {
+        console.log("Running in World App - attempting auto-authentication")
+        // Don't auto-auth, let user manually trigger it
+      }
     }
     initMiniKit()
   }, [])
@@ -75,8 +81,8 @@ export default function HomePage() {
 
       if (response.success) {
         const newUser: User = {
-          id: response.nullifier_hash,
-          worldId: response.nullifier_hash,
+          id: response.nullifier_hash || response.merkle_root || "unknown",
+          worldId: response.nullifier_hash || response.merkle_root || "unknown",
           isVerified: true,
         }
 
@@ -84,6 +90,8 @@ export default function HomePage() {
         localStorage.setItem("timeSlot_user", JSON.stringify(newUser))
 
         console.log("User verified:", newUser)
+      } else {
+        throw new Error(response.error || "Verification failed")
       }
     } catch (error) {
       console.error("World ID verification failed:", error)
@@ -128,6 +136,12 @@ export default function HomePage() {
               >
                 {isLoading ? "Verifying..." : miniKitAvailable ? "Verify with World ID" : "Open in World App"}
               </Button>
+              
+              {miniKitAvailable && miniKit.isInWorldApp() && (
+                <div className="text-sm text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-200">
+                  ✓ Running in World App
+                </div>
+              )}
 
               {isDevelopmentMode && (
                 <Button

@@ -1,0 +1,35 @@
+{
+  "name": "TimeSlot",
+  "description": "Professional Time Marketplace - Book verified experts and sell your time",
+  "version": "1.0.0",
+  "icon": "/placeholder-logo.svg",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "orientation": "portrait",
+  "scope": "/",
+  "permissions": [
+    "world_id_auth",
+    "pay",
+    "notifications"
+  ],
+  "features": {
+    "world_id_auth": {
+      "verification_levels": ["orb", "device"]
+    },
+    "pay": {
+      "supported_tokens": ["WLD", "USDC", "USDT"]
+    },
+    "notifications": {
+      "enabled": true
+    }
+  },
+  "ui": {
+    "theme": "light",
+    "primary_color": "#000000",
+    "accent_color": "#6366f1"
+  },
+  "categories": ["marketplace", "professional_services", "booking"],
+  "tags": ["time", "expertise", "consulting", "coaching", "professional"]
+}

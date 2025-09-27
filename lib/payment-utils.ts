@@ -1,10 +1,11 @@
 import { miniKit } from "@/lib/minikit"
+import { tokenToDecimals, Tokens } from '@worldcoin/minikit-js'
 
 export interface PaymentRequest {
   reference: string
   to: string
   amount: number
-  currency: "WLD" | "USDC"
+  currency: "WLD" | "USDC" | "USDT"
   description: string
 }
 
@@ -24,13 +25,16 @@ export class PaymentService {
         throw new Error("World App is required for payments")
       }
 
+      // Convert amount to proper decimals for the token
+      const tokenAmount = tokenToDecimals(request.amount, request.currency as keyof typeof Tokens)
+      
       const response = await miniKit.pay({
         reference: request.reference,
         to: request.to,
         tokens: [
           {
             symbol: request.currency,
-            token_amount: request.amount.toString(),
+            token_amount: tokenAmount,
           },
         ],
         description: request.description,
@@ -39,12 +43,12 @@ export class PaymentService {
       if (response.success) {
         return {
           success: true,
-          transactionId: response.transaction_id,
+          transactionId: response.transaction_id || response.tx_hash,
         }
       } else {
         return {
           success: false,
-          error: response.error_code || "Payment failed",
+          error: response.error || "Payment failed",
         }
       }
     } catch (error) {

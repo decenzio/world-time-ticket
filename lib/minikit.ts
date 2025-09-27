@@ -1,24 +1,4 @@
-// MiniKit SDK utilities for World App integration
-declare global {
-  interface Window {
-    MiniKit?: {
-      isInstalled: () => boolean
-      install: () => Promise<void>
-      commands: {
-        worldIdAuth: (payload: any) => Promise<any>
-        pay: (payload: any) => Promise<any>
-        walletAuth: (payload: any) => Promise<any>
-        sendTransaction: (payload: any) => Promise<any>
-      }
-    }
-  }
-}
-
-export interface WorldIDAuthPayload {
-  action: string
-  signal?: string
-  verification_level?: "orb" | "device"
-}
+import { MiniKit, WorldIDAuthPayload, PayCommandInput, ResponseEvent } from '@worldcoin/minikit-js'
 
 export interface PaymentPayload {
   reference: string
@@ -33,6 +13,7 @@ export interface PaymentPayload {
 export class MiniKitService {
   private static instance: MiniKitService
   private isInitialized = false
+  private isInIframe = false
 
   static getInstance(): MiniKitService {
     if (!MiniKitService.instance) {
@@ -48,20 +29,23 @@ export class MiniKitService {
     if (typeof window === "undefined") return false
 
     try {
+      // Check if we're in an iframe (World App environment)
+      this.isInIframe = window.self !== window.top
+
       // Wait for MiniKit to be available
       let attempts = 0
-      while (!window.MiniKit && attempts < 50) {
+      while (!MiniKit.isInstalled() && attempts < 50) {
         await new Promise((resolve) => setTimeout(resolve, 100))
         attempts++
       }
 
-      if (!window.MiniKit) {
+      if (!MiniKit.isInstalled()) {
         console.warn("MiniKit not available - running outside World App")
         return false
       }
 
-      this.isInitialized = window.MiniKit.isInstalled()
-      return this.isInitialized
+      this.isInitialized = true
+      return true
     } catch (error) {
       console.error("Failed to initialize MiniKit:", error)
       return false
@@ -69,7 +53,11 @@ export class MiniKitService {
   }
 
   isAvailable(): boolean {
-    return typeof window !== "undefined" && !!window.MiniKit && this.isInitialized
+    return typeof window !== "undefined" && this.isInitialized && MiniKit.isInstalled()
+  }
+
+  isInWorldApp(): boolean {
+    return this.isInIframe && this.isAvailable()
   }
 
   async worldIdAuth(payload: WorldIDAuthPayload): Promise<any> {
@@ -78,50 +66,100 @@ export class MiniKitService {
     }
 
     try {
-      return await window.MiniKit!.commands.worldIdAuth(payload)
+      const result = await MiniKit.commandsAsync.worldIdAuth(payload)
+      return {
+        success: true,
+        ...result
+      }
     } catch (error) {
       console.error("World ID auth failed:", error)
-      throw error
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Verification failed"
+      }
     }
   }
 
-  async pay(payload: PaymentPayload): Promise<any> {
+  async pay(payload: PayCommandInput): Promise<any> {
     if (!this.isAvailable()) {
       throw new Error("MiniKit not available")
     }
 
     try {
-      return await window.MiniKit!.commands.pay(payload)
+      const result = await MiniKit.commandsAsync.pay(payload)
+      return {
+        success: true,
+        ...result
+      }
     } catch (error) {
       console.error("Payment failed:", error)
-      throw error
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Payment failed"
+      }
     }
   }
 
-  async walletAuth(): Promise<any> {
+  async requestPermission(permission: string): Promise<any> {
     if (!this.isAvailable()) {
       throw new Error("MiniKit not available")
     }
 
     try {
-      return await window.MiniKit!.commands.walletAuth({})
+      const result = await MiniKit.commandsAsync.requestPermission({
+        permission: permission as any
+      })
+      return {
+        success: true,
+        ...result
+      }
     } catch (error) {
-      console.error("Wallet auth failed:", error)
-      throw error
+      console.error("Permission request failed:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Permission request failed"
+      }
     }
   }
 
-  async sendTransaction(payload: any): Promise<any> {
+  async getPermissions(): Promise<any> {
     if (!this.isAvailable()) {
       throw new Error("MiniKit not available")
     }
 
     try {
-      return await window.MiniKit!.commands.sendTransaction(payload)
+      const result = await MiniKit.commandsAsync.getPermissions()
+      return {
+        success: true,
+        ...result
+      }
     } catch (error) {
-      console.error("Send transaction failed:", error)
-      throw error
+      console.error("Get permissions failed:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Get permissions failed"
+      }
     }
+  }
+
+  // Subscribe to MiniKit events
+  subscribe(event: ResponseEvent, callback: (data: any) => void): void {
+    if (!this.isAvailable()) {
+      console.warn("MiniKit not available for subscription")
+      return
+    }
+
+    MiniKit.subscribe(event, callback)
+  }
+
+  // Unsubscribe from MiniKit events
+  unsubscribe(event: ResponseEvent): void {
+    if (!this.isAvailable()) {
+      console.warn("MiniKit not available for unsubscription")
+      return
+    }
+
+    MiniKit.unsubscribe(event)
   }
 }
 
