@@ -5,7 +5,7 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "TimeSlot - Professional Time Marketplace",
+  title: "WorldTimeTicket - Professional Time Marketplace",
   description: "Book verified experts and sell your time on World App",
   generator: 'v0.app'
 }

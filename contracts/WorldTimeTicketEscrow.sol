@@ -6,11 +6,11 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title TimeSlotEscrow
- * @dev Escrow contract for TimeSlot marketplace bookings
+ * @title WorldTimeTicketEscrow
+ * @dev Escrow contract for WorldTimeTicket marketplace bookings
  * Handles deposits, releases, refunds, and disputes for time slot bookings
  */
-contract TimeSlotEscrow is ReentrancyGuard, Ownable {
+contract WorldTimeTicketEscrow is ReentrancyGuard, Ownable {
     
     enum BookingStatus {
         Deposited,      // Funds deposited, booking confirmed

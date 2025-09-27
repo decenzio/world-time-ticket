@@ -93,7 +93,7 @@ export default function PaymentPage() {
             token_amount: booking.hourlyRate.toString(),
           },
         ],
-        description: `TimeSlot booking with ${booking.sellerName}`,
+        description: `WorldTimeTicket booking with ${booking.sellerName}`,
       })
 
       if (paymentResponse.success) {

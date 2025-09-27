@@ -2,12 +2,12 @@ import { ethers } from "ethers"
 
 async function deployEscrowContract() {
   // This script would be run to deploy the contract to testnet
-  console.log("Deploying TimeSlot Escrow Contract...")
+  console.log("Deploying WorldTimeTicket Escrow Contract...")
 
   // Contract deployment code would go here
   // For now, this is a placeholder showing the deployment structure
 
-  const contractFactory = await ethers.getContractFactory("TimeSlotEscrow")
+  const contractFactory = await ethers.getContractFactory("WorldTimeTicketEscrow")
   const contract = await contractFactory.deploy(
     "0x...", // Owner address
   )

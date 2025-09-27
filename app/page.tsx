@@ -203,7 +203,7 @@ export default function HomePage() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Clock className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-xl font-bold">TimeSlot</h1>
+            <h1 className="text-xl font-bold">WorldTimeTicket</h1>
           </div>
 
           <div className="flex items-center gap-4">
@@ -220,7 +220,7 @@ export default function HomePage() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="text-center py-8">
-          <h2 className="text-3xl font-bold mb-4">Welcome to TimeSlot</h2>
+          <h2 className="text-3xl font-bold mb-4">Welcome to WorldTimeTicket</h2>
           <p className="text-muted-foreground mb-8">
             You're verified! Ready to explore the marketplace or become a seller?
           </p>

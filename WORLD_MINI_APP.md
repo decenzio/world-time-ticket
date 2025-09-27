@@ -1,4 +1,4 @@
-# TimeSlot - World Mini App
+# WorldTimeTicket - World Mini App
 
 A professional time marketplace built as a World Mini App with World ID authentication and secure payments.
 
@@ -85,7 +85,7 @@ vercel --prod
 ### 4. Test in World App
 1. Open World App on your mobile device
 2. Navigate to Mini Apps
-3. Find and open TimeSlot
+3. Find and open WorldTimeTicket
 4. Test authentication and booking flow
 
 ## Mini App Manifest
@@ -94,7 +94,7 @@ The `mini-app.json` file contains the configuration for the World Mini App:
 
 ```json
 {
-  "name": "TimeSlot",
+  "name": "WorldTimeTicket",
   "description": "Professional Time Marketplace - Book verified experts and sell your time",
   "version": "1.0.0",
   "icon": "/placeholder-logo.svg",
