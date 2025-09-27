@@ -61,34 +61,3 @@ export interface BookingFilters {
   personId?: string;
   clientId?: string;
 }
-
-// API Response types
-export interface ApiResponse<T> {
-  data: T | null;
-  error: Error | null;
-}
-
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  count?: number;
-  hasMore?: boolean;
-}
-
-// Constants
-export const BOOKING_STATUS = {
-  PENDING: "pending",
-  CONFIRMED: "confirmed",
-  COMPLETED: "completed",
-  CANCELLED: "cancelled",
-} as const;
-
-export const CURRENCY = {
-  WLD: "WLD",
-  USDC: "USDC",
-} as const;
-
-export const PRICE_RANGES = {
-  ALL: "all",
-  UNDER_100: "under-100",
-  RANGE_100_200: "100-200",
-  OVER_200: "over-200",
-} as const;

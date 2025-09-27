@@ -36,12 +36,6 @@ export class NotFoundError extends AppError {
   }
 }
 
-export class UnauthorizedError extends AppError {
-  constructor(message: string = "Unauthorized access") {
-    super(message, "UNAUTHORIZED", 401);
-  }
-}
-
 export class DatabaseError extends AppError {
   constructor(message: string, originalError?: any) {
     super(`Database operation failed: ${message}`, "DATABASE_ERROR", 500);
@@ -93,25 +87,4 @@ export const asyncResult = async <T>(
       )
     );
   }
-};
-
-// Error boundary helper for React components
-export const handleAsyncError = <T extends any[]>(
-  fn: (...args: T) => Promise<any>
-) => {
-  return async (...args: T) => {
-    try {
-      return await fn(...args);
-    } catch (error) {
-      console.error("Async operation failed:", error);
-
-      if (error instanceof AppError) {
-        throw error;
-      }
-
-      throw new AppError(
-        error instanceof Error ? error.message : "Unknown error occurred"
-      );
-    }
-  };
 };

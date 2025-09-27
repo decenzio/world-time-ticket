@@ -27,7 +27,7 @@ interface SellerProfile {
 
 export default function SellerSetupPage() {
   const router = useRouter()
-  const { user, profile: userProfile } = useAuth()
+  const { profile: userProfile } = useAuth()
   const { data: session } = useSession()
   const [profile, setProfile] = useState<SellerProfile>({
     name: userProfile?.full_name || "",
