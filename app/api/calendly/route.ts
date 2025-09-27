@@ -1,5 +1,5 @@
 import {NextResponse} from "next/server";
-import {createMockCalendlyEvent, isMockEnabled,} from "../../../lib/calendly-mock";
+import {createMockCalendlyEvent, isMockEnabled,} from "@/lib/calendly-mock";
 
 export async function POST(request: Request) {
   if (!isMockEnabled()) {

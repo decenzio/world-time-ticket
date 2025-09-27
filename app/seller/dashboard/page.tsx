@@ -20,7 +20,7 @@ interface SellerStats {
 
 export default function SellerDashboard() {
   const router = useRouter()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<SellerStats>({
     totalEarnings: 0,
     completedSessions: 0,
@@ -39,7 +39,7 @@ export default function SellerDashboard() {
       return
     }
 
-    loadDashboardData()
+    loadDashboardData().catch(console.error)
   }, [user, authLoading, router])
 
   const loadDashboardData = async () => {

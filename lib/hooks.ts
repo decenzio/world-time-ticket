@@ -3,11 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/database";
-import { profileService, peopleService, bookingService } from "@/lib/services";
+import { profileService, peopleService } from "@/lib/services";
 import type {
   Profile,
   PersonWithProfile,
-  BookingWithDetails,
   PeopleFilters,
 } from "@/lib/domain-types";
 
@@ -64,12 +63,17 @@ export function useAuth() {
       }
     };
 
-    getInitialSession();
+    getInitialSession().catch((err) => {
+      if (mounted) {
+        setError("Failed to get initial session");
+        console.error("Initial session error:", err);
+      }
+    });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
 
       setUser(session?.user ?? null);
@@ -204,7 +208,9 @@ export function usePeople() {
   }, []);
 
   useEffect(() => {
-    fetchPeople();
+    fetchPeople().catch((err) => {
+      console.error("Error fetching people:", err);
+    });
   }, [fetchPeople]);
 
   const searchPeople = useCallback(
@@ -223,111 +229,4 @@ export function usePeople() {
   };
 }
 
-// Bookings hook with service layer integration
-export function useBookings(userId?: string) {
-  const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchBookings = useCallback(async () => {
-    if (!userId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const result = await bookingService.getUserBookings(userId);
-
-      if (result.success) {
-        setBookings(result.data);
-      } else {
-        setError(result.error.message);
-        setBookings([]);
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (userId) {
-      fetchBookings();
-    }
-  }, [userId, fetchBookings]);
-
-  const createBooking = useCallback(
-    async (bookingData: {
-      person_id: string;
-      session_notes?: string;
-      hourly_rate: number;
-      currency: "WLD" | "USDC";
-      total_amount: number;
-    }) => {
-      if (!userId) {
-        const error = new Error("No user found");
-        return { data: null, error };
-      }
-
-      try {
-        const result = await bookingService.createBooking({
-          ...bookingData,
-          client_id: userId,
-        });
-
-        if (result.success) {
-          await fetchBookings(); // Refresh bookings
-          return { data: result.data, error: null };
-        } else {
-          return { data: null, error: result.error };
-        }
-      } catch (err) {
-        return { data: null, error: err };
-      }
-    },
-    [userId, fetchBookings]
-  );
-
-  const updateBookingStatus = useCallback(
-    async (
-      bookingId: string,
-      status: "pending" | "confirmed" | "completed" | "cancelled"
-    ) => {
-      if (!userId) {
-        const error = new Error("No user found");
-        return { data: null, error };
-      }
-
-      try {
-        const result = await bookingService.updateBookingStatus(
-          bookingId,
-          status,
-          userId
-        );
-
-        if (result.success) {
-          await fetchBookings(); // Refresh bookings
-          return { data: result.data, error: null };
-        } else {
-          return { data: null, error: result.error };
-        }
-      } catch (err) {
-        return { data: null, error: err };
-      }
-    },
-    [userId, fetchBookings]
-  );
-
-  return {
-    bookings,
-    loading,
-    error,
-    createBooking,
-    updateBookingStatus,
-    refetch: fetchBookings,
-  };
-}

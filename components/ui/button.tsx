@@ -35,24 +35,53 @@ const buttonVariants = cva(
   },
 )
 
-const Button = React.forwardRef<
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: false
+}
+
+interface ButtonAsChildProps
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'as'>,
+    VariantProps<typeof buttonVariants> {
+  asChild: true
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, ...props }, ref) => {
+    return (
+      <button
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+
+const ButtonAsChild = React.forwardRef<HTMLElement, ButtonAsChildProps>(
+  ({ className, variant, size, asChild, ...props }, ref) => {
+    return (
+      <Slot
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+
+const ButtonComponent = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<'button'> &
-    VariantProps<typeof buttonVariants> & {
-      asChild?: boolean
-    }
->(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : 'button'
-
-  return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      ref={ref}
-      {...props}
-    />
-  )
+  ButtonProps | ButtonAsChildProps
+>((props, ref) => {
+  if (props.asChild) {
+    return <ButtonAsChild {...props} ref={ref as React.Ref<HTMLElement>} />
+  }
+  return <Button {...props} ref={ref} />
 })
-Button.displayName = 'Button'
+ButtonComponent.displayName = 'Button'
 
-export { Button, buttonVariants }
+export { ButtonComponent as Button, buttonVariants }

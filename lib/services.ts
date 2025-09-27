@@ -1,7 +1,6 @@
 // Service layer implementing business logic with clean architecture
 import * as repositories from "./repositories";
 import {
-  AppError,
   ValidationError,
   NotFoundError,
   asyncResult,
@@ -41,11 +40,6 @@ export class ProfileService {
     }
 
     return repositories.updateProfile(userId, updates);
-  }
-
-  private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
   }
 }
 
@@ -99,34 +93,6 @@ export class PeopleService {
     return repositories.createPerson(input);
   }
 
-  async updatePerson(
-    personId: string,
-    updates: Partial<Person>
-  ): Promise<Result<Person>> {
-    // Business validation for updates
-    if (updates.hourly_rate !== undefined) {
-      if (updates.hourly_rate < 1 || updates.hourly_rate > 10000) {
-        return {
-          success: false,
-          error: new ValidationError(
-            "Hourly rate must be between $1 and $10,000",
-            "hourly_rate"
-          ),
-        };
-      }
-    }
-
-    return repositories.updatePerson(personId, updates);
-  }
-
-  async searchPeople(
-    query: string,
-    filters: Omit<PeopleFilters, "search"> = {}
-  ): Promise<Result<PersonWithProfile[]>> {
-    const searchFilters = { ...filters, search: query.trim() };
-    return this.getAllPeople(searchFilters);
-  }
-
   async getPersonByUserId(userId: string): Promise<Result<PersonWithProfile>> {
     const result = await repositories.findPersonByUserId(userId);
 
@@ -145,13 +111,6 @@ export class PeopleService {
 
 // Booking service
 export class BookingService {
-  async getUserBookings(
-    userId: string,
-    filters: BookingFilters = {}
-  ): Promise<Result<BookingWithDetails[]>> {
-    return repositories.findBookingsByUserId(userId, filters);
-  }
-
   async getPersonBookings(
     personId: string,
     filters: BookingFilters = {}
@@ -176,7 +135,6 @@ export class BookingService {
   ): Promise<Result<Booking>> {
     // Business logic: validate status transitions and permissions
     const validationResult = await this.validateStatusUpdate(
-      bookingId,
       status,
       userId
     );
@@ -217,7 +175,7 @@ export class BookingService {
       }
 
       // Validate total amount calculation
-      const expectedTotal = input.hourly_rate * 1; // Assuming 1 hour sessions
+      const expectedTotal = input.hourly_rate; // Assuming 1 hour sessions
       if (Math.abs(input.total_amount - expectedTotal) > 0.01) {
         throw new ValidationError("Total amount calculation is incorrect");
       }
@@ -225,7 +183,6 @@ export class BookingService {
   }
 
   private async validateStatusUpdate(
-    bookingId: string,
     newStatus: Booking["status"],
     userId: string
   ): Promise<Result<void>> {
@@ -233,12 +190,6 @@ export class BookingService {
       // In a real app, you'd check if user has permission to update this booking
       // and validate status transitions (e.g., can't go from completed to pending)
 
-      const validTransitions: Record<Booking["status"], Booking["status"][]> = {
-        pending: ["confirmed", "cancelled"],
-        confirmed: ["completed", "cancelled"],
-        completed: [], // Final state
-        cancelled: [], // Final state
-      };
 
       // This is a simplified validation - in reality you'd fetch the current booking
       // and check actual permissions and current status
@@ -267,53 +218,6 @@ export class ReviewService {
     }
 
     return repositories.createReview(input);
-  }
-
-  async calculatePersonStats(personId: string): Promise<
-    Result<{
-      averageRating: number;
-      totalReviews: number;
-      ratingDistribution: Record<number, number>;
-    }>
-  > {
-    return asyncResult(async () => {
-      const reviewsResult = await this.getPersonReviews(personId);
-      if (!reviewsResult.success) {
-        throw reviewsResult.error;
-      }
-
-      const reviews = reviewsResult.data;
-      const totalReviews = reviews.length;
-
-      if (totalReviews === 0) {
-        return {
-          averageRating: 0,
-          totalReviews: 0,
-          ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-        };
-      }
-
-      const averageRating =
-        reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
-
-      const ratingDistribution = reviews.reduce((dist, review) => {
-        dist[review.rating] = (dist[review.rating] || 0) + 1;
-        return dist;
-      }, {} as Record<number, number>);
-
-      // Ensure all ratings 1-5 are represented
-      for (let i = 1; i <= 5; i++) {
-        if (!ratingDistribution[i]) {
-          ratingDistribution[i] = 0;
-        }
-      }
-
-      return {
-        averageRating: Math.round(averageRating * 100) / 100, // Round to 2 decimal places
-        totalReviews,
-        ratingDistribution,
-      };
-    });
   }
 
   private async validateReviewInput(

@@ -50,7 +50,7 @@ export default function MiniApp() {
 
   useEffect(() => {
     // Fetch platform statistics
-    fetchStats()
+    fetchStats().catch(console.error)
   }, [])
 
   useEffect(() => {

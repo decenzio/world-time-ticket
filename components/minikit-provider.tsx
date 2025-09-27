@@ -14,7 +14,7 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
     const installMiniKit = async () => {
       try {
         console.log("Installing MiniKit...")
-        await MiniKit.install()
+        MiniKit.install()
         console.log("MiniKit installed successfully")
         setIsInstalled(true)
         
@@ -27,7 +27,10 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
       }
     }
 
-    installMiniKit()
+    installMiniKit().catch(error => {
+      console.error("Failed to install MiniKit:", error)
+      setIsInstalled(false)
+    })
   }, [])
 
   return (

@@ -29,8 +29,7 @@ export default function BookingPage() {
 
   const [seller, setSeller] = useState<Seller | null>(null)
   const [sessionNotes, setSessionNotes] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [bookingId, setBookingId] = useState<string | null>(null)
+  const [isLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true

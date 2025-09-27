@@ -208,43 +208,6 @@ export const createPerson = async (
   });
 };
 
-export const updatePerson = async (
-  id: string,
-  updates: Partial<Person>
-): Promise<Result<Person>> => {
-  return asyncResult(async () => {
-    const client = getSupabase({ admin: true });
-    
-    // First check if person exists
-    const { data: existingPerson, error: fetchError } = await (client as any)
-      .from("people")
-      .select("id")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (fetchError) {
-      throw new DatabaseError(`Check person failed: ${fetchError.message}`);
-    }
-
-    if (!existingPerson) {
-      throw new NotFoundError("Person", id);
-    }
-
-    // Update the person
-    const { data, error } = await (client as any)
-      .from("people")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new DatabaseError(`Update person failed: ${error.message}`);
-    }
-    return data;
-  });
-};
-
 // Booking operations
 export const findBookingsByUserId = async (
   userId: string,

@@ -169,8 +169,4 @@ export type Booking = Database["public"]["Tables"]["bookings"]["Row"] & {
   profiles?: Database["public"]["Tables"]["profiles"]["Row"];
 };
 
-export type Review = Database["public"]["Tables"]["reviews"]["Row"] & {
-  profiles: Database["public"]["Tables"]["profiles"]["Row"];
-};
-
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
