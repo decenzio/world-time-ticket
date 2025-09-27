@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Calendar, Clock, ArrowRight, ExternalLink } from "lucide-react"
-import { bookingService } from "@/lib/services"
+import {useEffect, useState} from "react"
+import {useParams, useRouter} from "next/navigation"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {ArrowRight, Calendar, CheckCircle, Clock, ExternalLink} from "lucide-react"
+import {bookingService} from "@/lib/services"
 
 interface BookingConfirmation {
   id: string

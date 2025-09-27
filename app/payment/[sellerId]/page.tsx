@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { miniKit } from "@/lib/minikit"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/hooks"
-import { bookingService } from "@/lib/services"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Shield, Clock, DollarSign, CheckCircle, AlertCircle } from "lucide-react"
+import {useEffect, useState} from "react"
+import {useParams, useRouter} from "next/navigation"
+import {miniKit} from "@/lib/minikit"
+import {Button} from "@/components/ui/button"
+import {useAuth} from "@/lib/hooks"
+import {bookingService} from "@/lib/services"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {AlertCircle, ArrowLeft, CheckCircle, Clock, DollarSign, Shield} from "lucide-react"
 
 interface BookingDetails {
   sellerId: string

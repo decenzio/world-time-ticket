@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { FeedbackDisplay } from "@/components/feedback-display"
-import { Star, Shield, Clock, DollarSign } from "lucide-react"
-import { peopleService, reviewService } from "@/lib/services"
+import {useEffect, useState} from "react"
+import {useParams} from "next/navigation"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {Button} from "@/components/ui/button"
+import {FeedbackDisplay} from "@/components/feedback-display"
+import {Clock, DollarSign, Shield, Star} from "lucide-react"
+import {peopleService, reviewService} from "@/lib/services"
 
 interface UserProfile {
   id: string

@@ -1,10 +1,10 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield, ArrowLeft } from "lucide-react"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {ArrowLeft, Shield} from "lucide-react"
 import Link from "next/link"
-import { WalletAuth } from "@/components/wallet-auth"
-import { useRouter } from "next/navigation"
+import {WalletAuth} from "@/components/wallet-auth"
+import {useRouter} from "next/navigation"
 
 export default function SignInPage() {
   const router = useRouter()

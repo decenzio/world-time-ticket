@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, DollarSign, Settings, Star, TrendingUp, Loader2 } from "lucide-react"
-import { useAuth } from "@/lib/hooks"
-import { peopleService, bookingService } from "@/lib/services"
-import type { BookingWithDetails } from "@/lib/domain-types"
+import {useEffect, useState} from "react"
+import {useRouter} from "next/navigation"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs"
+import {Calendar, DollarSign, Loader2, Settings, Star, TrendingUp} from "lucide-react"
+import {useAuth} from "@/lib/hooks"
+import {bookingService, peopleService} from "@/lib/services"
+import type {BookingWithDetails} from "@/lib/domain-types"
 
 interface SellerStats {
   totalEarnings: number

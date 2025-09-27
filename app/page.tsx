@@ -1,15 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { statisticsService } from "@/lib/services"
-import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { AuthButton } from "@/components/auth-button"
-import { Clock, Shield, Star, Users, User, Plus, ArrowLeft, Bug } from "lucide-react"
-import { MiniKit } from "@worldcoin/minikit-js"
+import {useEffect, useState} from "react"
+import {useRouter} from "next/navigation"
+import {useSession} from "next-auth/react"
+import {statisticsService} from "@/lib/services"
+import {Button} from "@/components/ui/button"
+import {Card, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {AuthButton} from "@/components/auth-button"
+import {ArrowLeft, Bug, Clock, Plus, Shield, Star, User, Users} from "lucide-react"
+import {MiniKit} from "@worldcoin/minikit-js"
 
 interface PlatformStats {
   verifiedPeople: number

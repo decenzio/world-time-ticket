@@ -1,11 +1,11 @@
 "use client"
 
-import { useSearchParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { AlertCircle, ArrowLeft } from "lucide-react"
+import {useSearchParams} from "next/navigation"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Button} from "@/components/ui/button"
+import {AlertCircle, ArrowLeft} from "lucide-react"
 import Link from "next/link"
-import { Suspense } from "react"
+import {Suspense} from "react"
 
 function AuthErrorContent() {
   const searchParams = useSearchParams()

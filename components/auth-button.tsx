@@ -1,9 +1,9 @@
 "use client"
 
-import { signOut, useSession } from "next-auth/react"
-import { Button } from "@/components/ui/button"
-import { Shield, LogOut, Wallet } from "lucide-react"
-import { WalletAuth } from "./wallet-auth"
+import {signOut, useSession} from "next-auth/react"
+import {Button} from "@/components/ui/button"
+import {LogOut, Shield} from "lucide-react"
+import {WalletAuth} from "./wallet-auth"
 
 interface AuthButtonProps {
   onSuccess?: () => void

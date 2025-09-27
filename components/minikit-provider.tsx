@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, ReactNode, useState } from "react"
-import { MiniKit } from "@worldcoin/minikit-js"
+import {ReactNode, useEffect, useState} from "react"
+import {MiniKit} from "@worldcoin/minikit-js"
 
 interface MiniKitProviderProps {
   children: ReactNode

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Shield, Wallet, Loader2 } from "lucide-react"
-import { signIn, useSession } from "next-auth/react"
-import { MiniKit } from "@worldcoin/minikit-js"
-import { useRouter } from "next/navigation"
+import {useEffect, useState} from "react"
+import {Button} from "@/components/ui/button"
+import {Loader2, Shield, Wallet} from "lucide-react"
+import {signIn, useSession} from "next-auth/react"
+import {MiniKit} from "@worldcoin/minikit-js"
+import {useRouter} from "next/navigation"
 
 interface WalletAuthProps {
   onError?: (error: string) => void

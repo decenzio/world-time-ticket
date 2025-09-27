@@ -1,8 +1,8 @@
 import type React from "react"
-import { Inter } from "next/font/google"
+import {Inter} from "next/font/google"
 import "./globals.css"
-import { SessionProvider } from "./providers/session-provider"
-import { MiniKitProvider } from "@/components/minikit-provider"
+import {SessionProvider} from "./providers/session-provider"
+import {MiniKitProvider} from "@/components/minikit-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 

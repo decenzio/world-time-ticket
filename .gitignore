@@ -28,3 +28,6 @@ yarn-error.log*
 next-env.d.ts
 
 world-id-nextauth-template-main/
+.idea
+.idea/
+.DS_Store

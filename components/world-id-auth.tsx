@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Shield, CheckCircle, AlertCircle } from "lucide-react"
-import { miniKit } from "@/lib/minikit"
-import { VerificationLevel } from '@worldcoin/minikit-js'
+import {useEffect, useState} from "react"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {AlertCircle, CheckCircle, Shield} from "lucide-react"
+import {miniKit} from "@/lib/minikit"
+import {VerificationLevel} from '@worldcoin/minikit-js'
 
 interface WorldIDAuthProps {
   onSuccess: (proof: any) => void

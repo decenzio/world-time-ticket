@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/database"
-import { profileService } from "@/lib/services"
+import {NextRequest, NextResponse} from "next/server"
+import {supabaseAdmin} from "@/lib/database"
+import {profileService} from "@/lib/services"
 
 export async function POST(req: NextRequest) {
   try {

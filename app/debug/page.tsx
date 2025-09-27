@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { miniKit } from "@/lib/minikit"
-import { VerificationLevel } from '@worldcoin/minikit-js'
+import {useEffect, useState} from "react"
+import {miniKit} from "@/lib/minikit"
+import {VerificationLevel} from '@worldcoin/minikit-js'
 
 export default function DebugPage() {
   const [debugInfo, setDebugInfo] = useState<string[]>([])

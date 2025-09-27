@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { ArrowLeft, Calendar, Clock, DollarSign, Star, Shield, ExternalLink } from "lucide-react"
-import { peopleService } from "@/lib/services"
+import {useEffect, useState} from "react"
+import {useParams, useRouter} from "next/navigation"
+import {Button} from "@/components/ui/button"
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import {Badge} from "@/components/ui/badge"
+import {Textarea} from "@/components/ui/textarea"
+import {Label} from "@/components/ui/label"
+import {ArrowLeft, Calendar, Clock, DollarSign, ExternalLink, Shield, Star} from "lucide-react"
+import {peopleService} from "@/lib/services"
 
 interface Seller {
   id: string
