@@ -7,7 +7,8 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "check-db": "node scripts/check-db.mjs"
+    "check-db": "node scripts/check-db.mjs",
+    "setup-env": "node scripts/setup-env.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -18,6 +18,7 @@ declare module "next-auth" {
       optedIntoOptionalAnalytics?: boolean
       worldAppVersion?: number
       deviceOS?: string
+      worldIdProof?: string
     }
   }
 
@@ -37,6 +38,7 @@ declare module "next-auth" {
     optedIntoOptionalAnalytics?: boolean
     worldAppVersion?: number
     deviceOS?: string
+    worldIdProof?: string
   }
 }
 
@@ -54,5 +56,6 @@ declare module "next-auth/jwt" {
     optedIntoOptionalAnalytics?: boolean
     worldAppVersion?: number
     deviceOS?: string
+    worldIdProof?: string
   }
 }

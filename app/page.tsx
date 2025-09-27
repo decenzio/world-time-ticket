@@ -245,7 +245,7 @@ export default function MiniApp() {
                 <div className="flex items-center gap-4">
                   <Badge variant="secondary" className="gap-2">
                     <Shield className="w-3 h-3" />
-                    Wallet Verified
+                    {session?.user?.verificationLevel === "orb" ? "Orb Verified" : "Wallet Verified"}
                   </Badge>
                   <AuthButton />
                 </div>

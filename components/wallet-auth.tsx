@@ -58,21 +58,14 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
     setIsLoading(true)
     
     try {
-      // Get nonce from our API
+      // Step 1: Get nonce from our API
       console.log('Step 1: Getting nonce from API...')
       const res = await fetch("/api/nonce")
       const { nonce } = await res.json()
       console.log('Step 1: Got nonce:', nonce)
 
-      // Use MiniKit for wallet authentication
+      // Step 2: Use MiniKit for wallet authentication
       console.log('Step 2: Calling MiniKit walletAuth...')
-      console.log('Step 2: MiniKit walletAuth input:', {
-        nonce: nonce,
-        requestId: '0',
-        expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
-        notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
-        statement: 'Sign in to WorldTimeTicket to access the marketplace and book time with verified humans.',
-      })
       
       const { commandPayload: generateMessageResult, finalPayload } = await MiniKit.commandsAsync.walletAuth({
         nonce: nonce,
@@ -84,7 +77,6 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
 
       console.log('Step 2: Command payload (generateMessageResult):', generateMessageResult)
       console.log('Step 2: Final payload:', finalPayload)
-      console.log('Step 2: Final payload type:', typeof finalPayload)
       
       if (!finalPayload) {
         throw new Error('finalPayload is undefined in wallet auth result')
@@ -95,7 +87,7 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
         throw new Error(finalPayload.error || 'Authentication failed')
       }
 
-      // Verify the SIWE message
+      // Step 3: Verify the SIWE message
       console.log('Step 3: Verifying SIWE message...')
       const response = await fetch('/api/complete-siwe', {
         method: 'POST',
@@ -117,7 +109,7 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
         throw new Error(verificationResult.message || 'Verification failed')
       }
 
-      // Get user info from MiniKit if available
+      // Step 4: Get user info from MiniKit if available
       console.log('Step 4: Getting user info from MiniKit...')
       let userInfo = {}
       try {
@@ -131,7 +123,7 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
         console.warn('Step 4: Could not get user info from MiniKit:', error)
       }
       
-      // Sign in with NextAuth using the wallet address and user info
+      // Step 5: Sign in with NextAuth using the wallet address and user info
       console.log('Step 5: Signing in with NextAuth...')
       console.log('Step 5: Wallet address:', finalPayload.address)
       console.log('Step 5: User info:', userInfo)
@@ -144,6 +136,7 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
         optedIntoOptionalAnalytics: userInfo.optedIntoOptionalAnalytics?.toString(),
         worldAppVersion: userInfo.worldAppVersion?.toString(),
         deviceOS: userInfo.deviceOS,
+        verificationLevel: "device",
         redirect: false,
       })
       
@@ -191,7 +184,7 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
     <Button
       onClick={signInWithWallet}
       disabled={isLoading}
-      className="gap-2"
+      className="gap-2 w-full"
       size="lg"
     >
       {isLoading ? (
@@ -199,7 +192,7 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
       ) : (
         <Shield className="w-4 h-4" />
       )}
-      {isLoading ? "Authenticating..." : "Sign in with World ID"}
+      {isLoading ? "Authenticating..." : "Sign in with Wallet"}
     </Button>
   )
 }
