@@ -105,6 +105,7 @@ export default function SellerSetupPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: supabaseUserId,
+            email: `wallet-${session.user.walletAddress.toLowerCase()}@wallet.worldapp`,
             full_name: profile.name,
             bio: profile.bio,
           }),
