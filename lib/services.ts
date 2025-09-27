@@ -126,6 +126,21 @@ export class PeopleService {
     const searchFilters = { ...filters, search: query.trim() };
     return this.getAllPeople(searchFilters);
   }
+
+  async getPersonByUserId(userId: string): Promise<Result<PersonWithProfile>> {
+    const result = await repositories.findPersonByUserId(userId);
+
+    if (!result.success) return (result as unknown) as Result<PersonWithProfile>;
+
+    if (!result.data) {
+      return {
+        success: false,
+        error: new NotFoundError("Person for user", userId),
+      } as unknown as Result<PersonWithProfile>;
+    }
+
+    return ({ success: true, data: result.data } as unknown) as Result<PersonWithProfile>;
+  }
 }
 
 // Booking service
@@ -170,6 +185,10 @@ export class BookingService {
     }
 
     return repositories.updateBookingStatus(bookingId, status);
+  }
+
+  async getBookingById(id: string): Promise<Result<BookingWithDetails | null>> {
+    return repositories.findBookingById(id);
   }
 
   private async validateBookingInput(

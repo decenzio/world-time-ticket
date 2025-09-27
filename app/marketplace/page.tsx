@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Clock, DollarSign, Search, Star, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { usePeople } from "@/lib/hooks"
 
-interface Seller {
+interface SellerCardData {
   id: string
   name: string
   bio: string
@@ -28,76 +29,24 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [priceRange, setPriceRange] = useState("all")
 
-  const [sellers] = useState<Seller[]>([
-    {
-      id: "1",
-      name: "Sarah Chen",
-      bio: "Product designer with 8+ years at top tech companies. I help startups build user-centered products.",
-      hourlyRate: 120,
-      currency: "USDC",
-      rating: 4.9,
-      reviewCount: 47,
-      expertise: ["Product Design", "UX Research", "Figma", "Design Systems"],
-      availability: "Available this week",
-    },
-    {
-      id: "2",
-      name: "Marcus Rodriguez",
-      bio: "Full-stack developer specializing in React, Node.js, and cloud architecture. Let's build something amazing.",
-      hourlyRate: 95,
-      currency: "USDC",
-      rating: 4.8,
-      reviewCount: 32,
-      expertise: ["React", "Node.js", "AWS", "TypeScript"],
-      availability: "Available today",
-    },
-    {
-      id: "3",
-      name: "Dr. Emily Watson",
-      bio: "Business strategy consultant with MBA from Wharton. I help companies scale and optimize operations.",
-      hourlyRate: 200,
-      currency: "USDC",
-      rating: 5.0,
-      reviewCount: 28,
-      expertise: ["Business Strategy", "Operations", "MBA Consulting", "Scaling"],
-      availability: "Available next week",
-    },
-    {
-      id: "4",
-      name: "Alex Kim",
-      bio: "Marketing growth expert who's helped 50+ startups achieve product-market fit and scale their user base.",
-      hourlyRate: 85,
-      currency: "WLD",
-      rating: 4.7,
-      reviewCount: 61,
-      expertise: ["Growth Marketing", "SEO", "Content Strategy", "Analytics"],
-      availability: "Available this week",
-    },
-    {
-      id: "5",
-      name: "Jennifer Liu",
-      bio: "Data scientist with expertise in ML, AI, and analytics. I turn data into actionable business insights.",
-      hourlyRate: 110,
-      currency: "USDC",
-      rating: 4.9,
-      reviewCount: 39,
-      expertise: ["Data Science", "Machine Learning", "Python", "Analytics"],
-      availability: "Available tomorrow",
-    },
-    {
-      id: "6",
-      name: "David Thompson",
-      bio: "Legal advisor specializing in startup law, contracts, and intellectual property. Protect your business.",
-      hourlyRate: 250,
-      currency: "USDC",
-      rating: 4.8,
-      reviewCount: 22,
-      expertise: ["Legal Advice", "Contracts", "IP Law", "Startup Law"],
-      availability: "Available next week",
-    },
-  ])
+  const { people, loading } = usePeople()
 
   const categories = ["all", "Design", "Development", "Business", "Marketing", "Data Science", "Legal"]
+
+  const sellers: SellerCardData[] = useMemo(() => {
+    return (people || []).map((p) => ({
+      id: p.id,
+      name: p.profiles?.full_name || "Unnamed",
+      bio: p.profiles?.bio || "",
+      hourlyRate: p.hourly_rate,
+      currency: p.currency,
+      rating: Number(p.average_rating || 0),
+      reviewCount: p.total_reviews || 0,
+      expertise: p.skills || [],
+      availability: p.availability_status || "",
+      profileImage: p.profiles?.avatar_url || undefined,
+    }))
+  }, [people])
 
   const filteredSellers = sellers.filter((seller) => {
     const matchesSearch =
@@ -141,7 +90,7 @@ export default function MarketplacePage() {
 
           <Badge variant="secondary" className="gap-2">
             <Users className="w-3 h-3" />
-            {filteredSellers.length} Experts
+            {loading ? "Loading..." : `${filteredSellers.length} Experts`}
           </Badge>
         </div>
       </header>
@@ -187,7 +136,15 @@ export default function MarketplacePage() {
 
         {/* Results */}
         <div className="grid gap-6">
-          {filteredSellers.length === 0 ? (
+          {loading ? (
+            <Card className="text-center py-12">
+              <CardContent>
+                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Loading experts...</h3>
+                <p className="text-muted-foreground">Please wait</p>
+              </CardContent>
+            </Card>
+          ) : filteredSellers.length === 0 ? (
             <Card className="text-center py-12">
               <CardContent>
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />

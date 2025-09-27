@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Plus, X, Calendar } from "lucide-react"
+import { ArrowLeft, Plus, X, Calendar, Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/hooks"
+import { peopleService, profileService } from "@/lib/services"
 
 interface SellerProfile {
   name: string
@@ -25,9 +27,10 @@ interface SellerProfile {
 
 export default function SellerSetupPage() {
   const router = useRouter()
+  const { user, profile: userProfile } = useAuth()
   const [profile, setProfile] = useState<SellerProfile>({
-    name: "",
-    bio: "",
+    name: userProfile?.full_name || "",
+    bio: userProfile?.bio || "",
     hourlyRate: 50,
     currency: "USDC",
     calendlyUrl: "",
@@ -36,6 +39,7 @@ export default function SellerSetupPage() {
   })
   const [newExpertise, setNewExpertise] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const addExpertise = () => {
     if (newExpertise.trim() && !profile.expertise.includes(newExpertise.trim())) {
@@ -57,24 +61,55 @@ export default function SellerSetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (!user) {
+      setError("Please log in to create a seller profile")
+      return
+    }
+
     if (!profile.calendlyUrl.trim()) {
-      alert("Please provide your Calendly link.")
+      setError("Please provide your Calendly link.")
+      return
+    }
+
+    if (profile.expertise.length === 0) {
+      setError("Please add at least one area of expertise.")
       return
     }
 
     setIsLoading(true)
+    setError(null)
 
     try {
-      // TODO: Save profile to backend
-      console.log("Saving seller profile:", profile)
+      // First, update the user profile with name and bio
+      if (profile.name !== userProfile?.full_name || profile.bio !== userProfile?.bio) {
+        const profileResult = await profileService.updateProfile(user.id, {
+          full_name: profile.name,
+          bio: profile.bio,
+        })
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+        if (!profileResult.success) {
+          throw new Error(profileResult.error?.message || "Failed to update profile")
+        }
+      }
+
+      // Then, create the person profile for selling
+      const personResult = await peopleService.createPerson({
+        user_id: user.id,
+        hourly_rate: profile.hourlyRate,
+        currency: profile.currency,
+        calendly_url: profile.calendlyUrl,
+        skills: profile.expertise,
+        availability_status: profile.availability,
+      })
+
+      if (!personResult.success) {
+        throw new Error(personResult.error?.message || "Failed to create seller profile")
+      }
 
       router.push("/seller/dashboard")
     } catch (error) {
       console.error("Failed to save profile:", error)
-      alert("Failed to save profile. Please try again.")
+      setError(error instanceof Error ? error.message : "Failed to save profile. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -92,6 +127,14 @@ export default function SellerSetupPage() {
             <p className="text-muted-foreground">Share your expertise with verified humans</p>
           </div>
         </div>
+
+        {error && (
+          <Card className="mb-6 border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <p className="text-red-600">{error}</p>
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card>

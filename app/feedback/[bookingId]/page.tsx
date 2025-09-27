@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Star, Clock, CheckCircle } from "lucide-react"
+import { bookingService, reviewService } from "@/lib/services"
+import { useAuth } from "@/lib/hooks"
 
 interface BookingDetails {
   id: string
@@ -17,6 +19,7 @@ interface BookingDetails {
   scheduledTime: string
   status: string
   sessionNotes?: string
+  personId: string
 }
 
 interface FeedbackData {
@@ -30,6 +33,7 @@ export default function FeedbackPage() {
   const router = useRouter()
   const params = useParams()
   const bookingId = params.bookingId as string
+  const { user } = useAuth()
 
   const [booking, setBooking] = useState<BookingDetails | null>(null)
   const [feedback, setFeedback] = useState<FeedbackData>({
@@ -56,22 +60,31 @@ export default function FeedbackPage() {
   ]
 
   useEffect(() => {
-    // Mock booking data - in real app, fetch from API
-    const mockBooking: BookingDetails = {
-      id: bookingId,
-      sellerName: "Sarah Chen",
-      buyerName: "John Doe",
-      amount: 120,
-      currency: "USDC",
-      scheduledTime: "2024-01-15T14:00:00Z",
-      status: "completed",
-      sessionNotes: "Product design consultation for mobile app",
+    let mounted = true
+    bookingService.getBookingById(bookingId).then((res) => {
+      if (!mounted) return
+      if (res.success && res.data) {
+        const b = res.data
+        setBooking({
+          id: b.id,
+          sellerName: b.person?.profiles?.full_name || "",
+          buyerName: b.profiles?.full_name || "",
+          amount: b.total_amount,
+          currency: b.currency,
+          scheduledTime: b.scheduled_date || b.created_at,
+          status: b.status,
+          sessionNotes: b.session_notes || undefined,
+          personId: (b as any).person_id,
+        })
+        // Infer role from auth user if possible
+        if (user?.id && b.client_id === user.id) setUserRole("buyer")
+        else setUserRole("seller")
+      }
+    })
+    return () => {
+      mounted = false
     }
-    setBooking(mockBooking)
-
-    // Determine user role (in real app, get from auth context)
-    setUserRole("buyer") // Mock as buyer for demo
-  }, [bookingId])
+  }, [bookingId, user?.id])
 
   const handleRatingClick = (rating: number) => {
     setFeedback((prev) => ({ ...prev, rating }))
@@ -93,15 +106,18 @@ export default function FeedbackPage() {
     setIsLoading(true)
 
     try {
-      // TODO: Submit feedback to backend and smart contract
-      console.log("Submitting feedback:", {
-        bookingId,
-        userRole,
-        feedback,
-      })
+      if (!user || !booking) throw new Error("Not authenticated or booking missing")
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Submit review into Supabase
+      const reviewRes = await reviewService.createReview({
+        booking_id: booking.id,
+        client_id: user.id,
+        person_id: booking.personId,
+        rating: feedback.rating,
+        comment: feedback.comment,
+        tags: feedback.wouldRecommend ? [...feedback.tags, "Would Recommend"] : feedback.tags,
+      } as any)
+      if (!reviewRes.success) throw reviewRes.error
 
       setIsSubmitted(true)
 

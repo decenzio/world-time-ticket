@@ -320,6 +320,69 @@ export const updateBookingStatus = async (
   });
 };
 
+// Fetch single booking with relations by id
+export const findBookingById = async (
+  id: string
+): Promise<Result<BookingWithDetails | null>> => {
+  return asyncResult(async () => {
+    const client = getSupabase();
+    const { data, error } = await (client as any)
+      .from("bookings")
+      .select(
+        `
+        *,
+        person:person_id (
+          *,
+          profiles:user_id (
+            full_name,
+            avatar_url,
+            bio
+          )
+        ),
+        profiles:client_id (
+          full_name,
+          avatar_url
+        )
+      `
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new DatabaseError(`Fetch booking failed: ${error.message}`);
+    }
+    return (data || null) as BookingWithDetails | null;
+  });
+};
+
+// Find a person row by their owning user_id (profile id)
+export const findPersonByUserId = async (
+  userId: string
+): Promise<Result<PersonWithProfile | null>> => {
+  return asyncResult(async () => {
+    const client = getSupabase();
+    const { data, error } = await (client as any)
+      .from("people")
+      .select(
+        `
+        *,
+        profiles:user_id (
+          full_name,
+          avatar_url,
+          bio
+        )
+      `
+      )
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      throw new DatabaseError(`Fetch person by user_id failed: ${error.message}`);
+    }
+    return (data || null) as PersonWithProfile | null;
+  });
+};
+
 // Review operations
 export const findReviewsByPersonId = async (
   personId: string

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, Calendar, Clock, ArrowRight, ExternalLink } from "lucide-react"
+import { bookingService } from "@/lib/services"
 
 interface BookingConfirmation {
   id: string
@@ -25,17 +26,25 @@ export default function BookingConfirmationPage() {
   const [booking, setBooking] = useState<BookingConfirmation | null>(null)
 
   useEffect(() => {
-    // Mock booking data - in real app, fetch from API using bookingId
-    const mockBooking: BookingConfirmation = {
-      id: bookingId,
-      sellerName: "Sarah Chen",
-      amount: 123, // Including platform fee
-      currency: "USDC",
-      status: "payment_confirmed",
-      createdAt: new Date().toISOString(),
-      calendlyUrl: "https://calendly.com/sarah-chen/consultation",
+    let mounted = true
+    bookingService.getBookingById(bookingId).then((res) => {
+      if (!mounted) return
+      if (res.success && res.data) {
+        const b = res.data
+        setBooking({
+          id: b.id,
+          sellerName: b.person?.profiles?.full_name || "Unknown",
+          amount: b.total_amount,
+          currency: b.currency,
+          status: b.status,
+          createdAt: b.created_at,
+          calendlyUrl: b.person?.calendly_url || "",
+        })
+      }
+    })
+    return () => {
+      mounted = false
     }
-    setBooking(mockBooking)
   }, [bookingId])
 
   const handleOpenCalendly = () => {

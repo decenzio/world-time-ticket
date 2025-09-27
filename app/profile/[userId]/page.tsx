@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { FeedbackDisplay } from "@/components/feedback-display"
 import { Star, Shield, Clock, DollarSign } from "lucide-react"
+import { peopleService, reviewService } from "@/lib/services"
 
 interface UserProfile {
   id: string
@@ -39,55 +40,44 @@ export default function ProfilePage() {
   const [reviews, setReviews] = useState<Review[]>([])
 
   useEffect(() => {
-    // Mock data - in real app, fetch from API
-    const mockProfile: UserProfile = {
-      id: userId,
-      name: "Sarah Chen",
-      bio: "Product designer with 8+ years at top tech companies. I help startups build user-centered products that users love. My expertise spans UX research, design systems, and product strategy.",
-      hourlyRate: 120,
-      currency: "USDC",
-      rating: 4.9,
-      reviewCount: 47,
-      expertise: ["Product Design", "UX Research", "Figma", "Design Systems", "Product Strategy"],
-      joinedDate: "2023-06-15",
-      completedSessions: 89,
+    let mounted = true
+    // userId here is a people.id per route naming; if it's a profile id, consider using getPersonByUserId
+    peopleService.getPersonById(userId).then((res) => {
+      if (!mounted) return
+      if (res.success && res.data) {
+        const p = res.data
+        setProfile({
+          id: p.id,
+          name: p.profiles?.full_name || "Unnamed",
+          bio: p.profiles?.bio || "",
+          hourlyRate: p.hourly_rate,
+          currency: p.currency,
+          rating: Number(p.average_rating || 0),
+          reviewCount: p.total_reviews || 0,
+          expertise: p.skills || [],
+          joinedDate: p.created_at,
+          completedSessions: p.total_reviews || 0,
+        })
+      }
+    })
+    reviewService.getPersonReviews(userId).then((res) => {
+      if (!mounted) return
+      if (res.success && res.data) {
+        const mapped: Review[] = res.data.map((r: any) => ({
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment || "",
+          tags: r.tags || [],
+          reviewerName: r.profiles?.full_name || "",
+          date: r.created_at,
+          wouldRecommend: (r.tags || []).includes("Would Recommend"),
+        }))
+        setReviews(mapped)
+      }
+    })
+    return () => {
+      mounted = false
     }
-
-    const mockReviews: Review[] = [
-      {
-        id: "1",
-        rating: 5,
-        comment:
-          "Sarah provided incredible insights into our product design challenges. Her expertise in design systems helped us create a more cohesive user experience.",
-        tags: ["Knowledgeable", "Professional", "Insightful", "Well Prepared"],
-        reviewerName: "Alex M.",
-        date: "2024-01-10",
-        wouldRecommend: true,
-      },
-      {
-        id: "2",
-        rating: 5,
-        comment:
-          "Excellent session! Sarah walked me through the entire UX research process and gave me actionable next steps for my project.",
-        tags: ["Helpful", "Clear Communication", "Patient", "Exceeded Expectations"],
-        reviewerName: "Maria L.",
-        date: "2024-01-08",
-        wouldRecommend: true,
-      },
-      {
-        id: "3",
-        rating: 4,
-        comment:
-          "Great consultation. Sarah was very knowledgeable and provided valuable feedback on our design approach.",
-        tags: ["Knowledgeable", "Professional", "On Time"],
-        reviewerName: "David K.",
-        date: "2024-01-05",
-        wouldRecommend: true,
-      },
-    ]
-
-    setProfile(mockProfile)
-    setReviews(mockReviews)
   }, [userId])
 
   if (!profile) {

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Calendar, Clock, DollarSign, Star, Shield, ExternalLink } from "lucide-react"
+import { peopleService } from "@/lib/services"
 
 interface Seller {
   id: string
@@ -32,19 +33,27 @@ export default function BookingPage() {
   const [bookingId, setBookingId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Mock seller data - in real app, fetch from API
-    const mockSeller: Seller = {
-      id: sellerId,
-      name: "Sarah Chen",
-      bio: "Product designer with 8+ years at top tech companies. I help startups build user-centered products.",
-      hourlyRate: 120,
-      currency: "USDC",
-      rating: 4.9,
-      reviewCount: 47,
-      expertise: ["Product Design", "UX Research", "Figma", "Design Systems"],
-      calendlyUrl: "https://calendly.com/sarah-chen/consultation",
+    let mounted = true
+    peopleService.getPersonById(sellerId).then((res) => {
+      if (!mounted) return
+      if (res.success && res.data) {
+        const p = res.data
+        setSeller({
+          id: p.id,
+          name: p.profiles?.full_name || "Unnamed",
+          bio: p.profiles?.bio || "",
+          hourlyRate: p.hourly_rate,
+          currency: p.currency,
+          rating: Number(p.average_rating || 0),
+          reviewCount: p.total_reviews || 0,
+          expertise: p.skills || [],
+          calendlyUrl: p.calendly_url || "",
+        })
+      }
+    })
+    return () => {
+      mounted = false
     }
-    setSeller(mockSeller)
   }, [sellerId])
 
   const handleProceedToPayment = () => {

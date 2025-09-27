@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { miniKit } from "@/lib/minikit"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/hooks"
+import { bookingService } from "@/lib/services"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Shield, Clock, DollarSign, CheckCircle, AlertCircle } from "lucide-react"
@@ -27,6 +29,7 @@ export default function PaymentPage() {
   const router = useRouter()
   const params = useParams()
   const sellerId = params.sellerId as string
+  const { user } = useAuth()
 
   const [booking, setBooking] = useState<BookingDetails | null>(null)
   const [selectedCurrency, setSelectedCurrency] = useState<"WLD" | "USDC">("USDC")
@@ -54,7 +57,7 @@ export default function PaymentPage() {
   }, [router])
 
   const handlePayment = async () => {
-    if (!booking || !miniKitAvailable) {
+    if (!booking || !miniKitAvailable || !user) {
       alert("Please open this app in World App")
       return
     }
@@ -62,17 +65,27 @@ export default function PaymentPage() {
     setPaymentState({ status: "processing", message: "Initiating payment..." })
 
     try {
-      // Step 1: Create escrow booking and get booking ID
+      // Step 1: Create booking record in Supabase and get booking ID
       setPaymentState({ status: "processing", message: "Creating secure escrow..." })
 
-      // Mock booking creation - in real app, call smart contract
-      const mockBookingId = `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const createRes = await bookingService.createBooking({
+        client_id: user.id,
+        person_id: booking.sellerId, // sellerId must be a people.id
+        session_notes: booking.sessionNotes,
+        hourly_rate: booking.hourlyRate,
+        currency: booking.currency,
+        total_amount: booking.hourlyRate, // 1 hour session
+      })
+      if (!createRes.success || !createRes.data) {
+        throw createRes.error || new Error("Failed to create booking")
+      }
+      const createdBooking = createRes.data
 
       // Step 2: Initiate MiniKit Pay
       setPaymentState({ status: "processing", message: "Processing payment..." })
 
       const paymentResponse = await miniKit.pay({
-        reference: mockBookingId,
+        reference: createdBooking.id,
         to: "0x...", // Escrow contract address
         tokens: [
           {
@@ -97,15 +110,18 @@ export default function PaymentPage() {
           status: "success",
           message: "Payment successful! Booking confirmed.",
           transactionHash: paymentResponse.transaction_id,
-          bookingId: mockBookingId,
+          bookingId: createdBooking.id,
         })
+
+        // Mark booking confirmed
+        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", user.id)
 
         // Clear pending booking
         localStorage.removeItem("pendingBooking")
 
         // Auto-redirect to booking confirmation
         setTimeout(() => {
-          router.push(`/booking-confirmation/${mockBookingId}`)
+          router.push(`/booking-confirmation/${createdBooking.id}`)
         }, 3000)
       } else {
         throw new Error(paymentResponse.error_code || "Payment failed")

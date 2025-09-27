@@ -1,20 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, DollarSign, Settings, Star, TrendingUp } from "lucide-react"
-
-interface Booking {
-  id: string
-  buyerName: string
-  date: string
-  duration: number
-  amount: number
-  status: "pending" | "confirmed" | "completed" | "cancelled"
-}
+import { Calendar, DollarSign, Settings, Star, TrendingUp, Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/hooks"
+import { peopleService, bookingService } from "@/lib/services"
+import type { BookingWithDetails } from "@/lib/domain-types"
 
 interface SellerStats {
   totalEarnings: number
@@ -24,39 +19,76 @@ interface SellerStats {
 }
 
 export default function SellerDashboard() {
+  const router = useRouter()
+  const { user, profile, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<SellerStats>({
-    totalEarnings: 2450,
-    completedSessions: 28,
-    averageRating: 4.9,
-    pendingBookings: 3,
+    totalEarnings: 0,
+    completedSessions: 0,
+    averageRating: 0,
+    pendingBookings: 0,
   })
+  const [recentBookings, setRecentBookings] = useState<BookingWithDetails[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [recentBookings] = useState<Booking[]>([
-    {
-      id: "1",
-      buyerName: "Alice Johnson",
-      date: "2024-01-15T14:00:00Z",
-      duration: 60,
-      amount: 75,
-      status: "confirmed",
-    },
-    {
-      id: "2",
-      buyerName: "Bob Smith",
-      date: "2024-01-16T10:00:00Z",
-      duration: 30,
-      amount: 50,
-      status: "pending",
-    },
-    {
-      id: "3",
-      buyerName: "Carol Davis",
-      date: "2024-01-14T16:00:00Z",
-      duration: 90,
-      amount: 120,
-      status: "completed",
-    },
-  ])
+  useEffect(() => {
+    if (authLoading) return
+
+    if (!user) {
+      router.push("/")
+      return
+    }
+
+    loadDashboardData()
+  }, [user, authLoading, router])
+
+  const loadDashboardData = async () => {
+    if (!user) return
+
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      // Get person profile for this user
+      const personResult = await peopleService.getPersonByUserId(user.id)
+      if (!personResult.success || !personResult.data) {
+        setError("Please complete your seller profile first")
+        router.push("/seller/setup")
+        return
+      }
+
+      const person = personResult.data
+
+      // Get bookings for this person
+      const bookingsResult = await bookingService.getPersonBookings(person.id)
+      if (!bookingsResult.success) {
+        setError("Failed to load bookings")
+        return
+      }
+
+      const bookings = bookingsResult.data
+      setRecentBookings(bookings.slice(0, 10)) // Show last 10 bookings
+
+      // Calculate stats
+      const completedBookings = bookings.filter(b => b.status === "completed")
+      const pendingBookings = bookings.filter(b => b.status === "pending" || b.status === "confirmed")
+      
+      const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_amount), 0)
+      
+      setStats({
+        totalEarnings,
+        completedSessions: completedBookings.length,
+        averageRating: Number(person.average_rating || 0),
+        pendingBookings: pendingBookings.length,
+      })
+
+    } catch (err) {
+      console.error("Error loading dashboard data:", err)
+      setError("Failed to load dashboard data")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -71,6 +103,38 @@ export default function SellerDashboard() {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency === 'WLD' ? 'USD' : 'USD', // Map WLD to USD for display
+      minimumFractionDigits: 2,
+    }).format(amount)
+  }
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => loadDashboardData()}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -95,8 +159,8 @@ export default function SellerDashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalEarnings}</div>
-              <p className="text-xs text-muted-foreground">+12% from last month</p>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalEarnings, 'USDC')}</div>
+              <p className="text-xs text-muted-foreground">Total completed sessions</p>
             </CardContent>
           </Card>
 
@@ -107,7 +171,7 @@ export default function SellerDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.completedSessions}</div>
-              <p className="text-xs text-muted-foreground">+3 this week</p>
+              <p className="text-xs text-muted-foreground">Completed sessions</p>
             </CardContent>
           </Card>
 
@@ -117,8 +181,8 @@ export default function SellerDashboard() {
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.averageRating}</div>
-              <p className="text-xs text-muted-foreground">From 24 reviews</p>
+              <div className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</div>
+              <p className="text-xs text-muted-foreground">Average rating</p>
             </CardContent>
           </Card>
 
@@ -129,7 +193,7 @@ export default function SellerDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.pendingBookings}</div>
-              <p className="text-xs text-muted-foreground">Awaiting confirmation</p>
+              <p className="text-xs text-muted-foreground">Pending bookings</p>
             </CardContent>
           </Card>
         </div>
@@ -150,29 +214,45 @@ export default function SellerDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentBookings.map((booking) => (
-                    <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{booking.buyerName}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(booking.date).toLocaleDateString()} at{" "}
-                            {new Date(booking.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-medium">${booking.amount}</p>
-                          <p className="text-sm text-muted-foreground">{booking.duration} min</p>
-                        </div>
-                        <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
-                      </div>
+                  {recentBookings.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No bookings yet</p>
+                      <p className="text-sm text-muted-foreground">Your bookings will appear here once clients start booking sessions</p>
                     </div>
-                  ))}
+                  ) : (
+                    recentBookings.map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{booking.profiles?.full_name || "Unknown Client"}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {booking.scheduled_date 
+                                ? new Date(booking.scheduled_date).toLocaleDateString() + " at " +
+                                  new Date(booking.scheduled_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                                : "No date scheduled"
+                              }
+                            </p>
+                            {booking.session_notes && (
+                              <p className="text-xs text-muted-foreground mt-1 italic">
+                                "{booking.session_notes.substring(0, 50)}{booking.session_notes.length > 50 ? "..." : ""}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="font-medium">{formatCurrency(Number(booking.total_amount), booking.currency)}</p>
+                            <p className="text-sm text-muted-foreground">1 hour session</p>
+                          </div>
+                          <Badge className={getStatusColor(booking.status)}>{booking.status}</Badge>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
