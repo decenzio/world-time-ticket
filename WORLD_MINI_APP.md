@@ -1,6 +1,6 @@
 # WorldTimeTicket - World Mini App
 
-A professional time marketplace built as a World Mini App with World ID authentication and secure payments.
+A time marketplace built as a World Mini App with World ID authentication and secure payments.
 
 ## Features
 
@@ -95,7 +95,7 @@ The `mini-app.json` file contains the configuration for the World Mini App:
 ```json
 {
   "name": "WorldTimeTicket",
-  "description": "Professional Time Marketplace - Book verified experts and sell your time",
+  "description": "Time Marketplace - Connect with people and sell your time",
   "version": "1.0.0",
   "icon": "/placeholder-logo.svg",
   "start_url": "/",

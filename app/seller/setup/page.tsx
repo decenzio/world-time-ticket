@@ -21,7 +21,7 @@ interface SellerProfile {
   hourlyRate: number
   currency: "WLD" | "USDC"
   calendlyUrl: string
-  expertise: string[]
+  skills: string[]
   availability: string
 }
 
@@ -34,27 +34,27 @@ export default function SellerSetupPage() {
     hourlyRate: 50,
     currency: "USDC",
     calendlyUrl: "",
-    expertise: [],
+    skills: [],
     availability: "flexible",
   })
-  const [newExpertise, setNewExpertise] = useState("")
+  const [newSkill, setNewSkill] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const addExpertise = () => {
-    if (newExpertise.trim() && !profile.expertise.includes(newExpertise.trim())) {
+  const addSkill = () => {
+    if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
       setProfile((prev) => ({
         ...prev,
-        expertise: [...prev.expertise, newExpertise.trim()],
+        skills: [...prev.skills, newSkill.trim()],
       }))
-      setNewExpertise("")
+      setNewSkill("")
     }
   }
 
-  const removeExpertise = (tag: string) => {
+  const removeSkill = (tag: string) => {
     setProfile((prev) => ({
       ...prev,
-      expertise: prev.expertise.filter((t) => t !== tag),
+      skills: prev.skills.filter((t) => t !== tag),
     }))
   }
 
@@ -71,8 +71,8 @@ export default function SellerSetupPage() {
       return
     }
 
-    if (profile.expertise.length === 0) {
-      setError("Please add at least one area of expertise.")
+    if (profile.skills.length === 0) {
+      setError("Please add at least one skill or interest.")
       return
     }
 
@@ -98,7 +98,7 @@ export default function SellerSetupPage() {
         hourly_rate: profile.hourlyRate,
         currency: profile.currency,
         calendly_url: profile.calendlyUrl,
-        skills: profile.expertise,
+        skills: profile.skills,
         availability_status: profile.availability,
       })
 
@@ -124,7 +124,7 @@ export default function SellerSetupPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Setup Your Seller Profile</h1>
-            <p className="text-muted-foreground">Share your expertise with verified humans</p>
+            <p className="text-muted-foreground">Share your skills and interests with verified people</p>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export default function SellerSetupPage() {
                   id="name"
                   value={profile.name}
                   onChange={(e) => setProfile((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Your professional name"
+                  placeholder="Your display name"
                   required
                 />
               </div>
@@ -233,30 +233,30 @@ export default function SellerSetupPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Expertise Tags</CardTitle>
+              <CardTitle>Skills & Interests</CardTitle>
               <CardDescription>Add tags to help people find you</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
                 <Input
-                  value={newExpertise}
-                  onChange={(e) => setNewExpertise(e.target.value)}
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
                   placeholder="e.g., Business Strategy, Design, Coding"
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addExpertise())}
+                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSkill())}
                 />
-                <Button type="button" onClick={addExpertise} size="sm">
+                <Button type="button" onClick={addSkill} size="sm">
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
 
-              {profile.expertise.length > 0 && (
+              {profile.skills.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {profile.expertise.map((tag) => (
+                  {profile.skills.map((tag) => (
                     <Badge key={tag} variant="secondary" className="gap-1">
                       {tag}
                       <button
                         type="button"
-                        onClick={() => removeExpertise(tag)}
+                        onClick={() => removeSkill(tag)}
                         className="hover:bg-destructive/20 rounded-full p-0.5"
                       >
                         <X className="w-3 h-3" />

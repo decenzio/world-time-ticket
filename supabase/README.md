@@ -1,6 +1,6 @@
 # Supabase Database Setup for World Time Ticket
 
-This directory contains the database schema and setup files for the World Time Ticket expert marketplace platform.
+This directory contains the database schema and setup files for the World Time Ticket people marketplace platform.
 
 ## Files
 
@@ -9,11 +9,11 @@ This directory contains the database schema and setup files for the World Time T
 ### Core Tables
 
 1. **profiles** - User profiles (linked to Supabase auth)
-2. **experts** - Expert/seller profiles with rates and availability
-3. **expert_expertise** - Skills and categories for each expert
-4. **bookings** - Session bookings between clients and experts
+2. **people** - Person/seller profiles with rates and availability
+3. **person_skills** - Skills and categories for each person
+4. **bookings** - Session bookings between clients and people
 5. **payments** - Payment tracking and escrow functionality
-6. **reviews** - Client reviews and ratings for experts
+6. **reviews** - Client reviews and ratings for people
 7. **review_tags** - Categorized feedback tags
 8. **notifications** - System notifications
 

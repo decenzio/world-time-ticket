@@ -82,7 +82,7 @@ export default function BookingConfirmationPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Expert</span>
+              <span className="text-muted-foreground">Person</span>
               <span className="font-medium">{booking.sellerName}</span>
             </div>
             <div className="flex justify-between">
@@ -136,7 +136,7 @@ export default function BookingConfirmationPage() {
             <p>• Your payment is held securely in escrow until the session is completed</p>
             <p>• You can cancel and receive a full refund before the scheduled session time</p>
             <p>• After the session, both parties will be asked to leave feedback</p>
-            <p>• Payment will be released to the expert once feedback is submitted</p>
+            <p>• Payment will be released to the person once feedback is submitted</p>
           </CardContent>
         </Card>
 
@@ -146,7 +146,7 @@ export default function BookingConfirmationPage() {
             View My Bookings
           </Button>
           <Button onClick={() => router.push("/marketplace")} className="flex-1 gap-2">
-            Browse More Experts
+            Browse More People
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>

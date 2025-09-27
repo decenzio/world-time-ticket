@@ -218,7 +218,7 @@ export default function PaymentPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Expert</span>
+              <span className="text-muted-foreground">Person</span>
               <span className="font-medium">{booking.sellerName}</span>
             </div>
             <div className="flex justify-between">
@@ -314,7 +314,7 @@ export default function PaymentPage() {
               <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-medium text-primary">4</span>
               </div>
-              <p className="text-muted-foreground">Payment automatically released to expert after feedback</p>
+              <p className="text-muted-foreground">Payment automatically released to person after feedback</p>
             </div>
           </CardContent>
         </Card>

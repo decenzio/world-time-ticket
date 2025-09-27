@@ -119,11 +119,11 @@ export default function HomePage() {
             <h1 className="text-4xl md:text-6xl font-bold text-balance mb-6">
               Sell Your Time,
               <br />
-              <span className="text-primary">Share Your Expertise</span>
+              <span className="text-primary">Share Your Time</span>
             </h1>
 
             <p className="text-xl text-muted-foreground text-balance max-w-2xl mx-auto mb-8">
-              Connect with verified humans on World App. Book consultations, coaching sessions, and professional
+              Connect with verified people on World App. Book time slots, chat sessions, and casual
               services with secure escrow payments.
             </p>
 
@@ -228,7 +228,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="gap-2" onClick={() => router.push("/marketplace")}>
               <Users className="w-5 h-5" />
-              Browse Experts
+              Browse People
             </Button>
             <Button
               variant="outline"
@@ -245,7 +245,7 @@ export default function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
           <Card className="text-center p-6">
             <div className="text-2xl font-bold text-primary">1,247</div>
-            <div className="text-sm text-muted-foreground">Verified Experts</div>
+            <div className="text-sm text-muted-foreground">Verified People</div>
           </Card>
           <Card className="text-center p-6">
             <div className="text-2xl font-bold text-accent">4.9</div>

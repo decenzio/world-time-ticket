@@ -18,7 +18,7 @@ interface SellerCardData {
   currency: "WLD" | "USDC"
   rating: number
   reviewCount: number
-  expertise: string[]
+  skills: string[]
   availability: string
   profileImage?: string
 }
@@ -42,7 +42,7 @@ export default function MarketplacePage() {
       currency: p.currency,
       rating: Number(p.average_rating || 0),
       reviewCount: p.total_reviews || 0,
-      expertise: p.skills || [],
+      skills: p.skills || [],
       availability: p.availability_status || "",
       profileImage: p.profiles?.avatar_url || undefined,
     }))
@@ -52,11 +52,11 @@ export default function MarketplacePage() {
     const matchesSearch =
       seller.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       seller.bio.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      seller.expertise.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      seller.skills.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
 
     const matchesCategory =
       selectedCategory === "all" ||
-      seller.expertise.some((tag) => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
+      seller.skills.some((tag) => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
 
     const matchesPrice =
       priceRange === "all" ||
@@ -84,13 +84,13 @@ export default function MarketplacePage() {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <Clock className="w-5 h-5 text-primary-foreground" />
               </div>
-              <h1 className="text-xl font-bold">Expert Marketplace</h1>
+              <h1 className="text-xl font-bold">People Marketplace</h1>
             </div>
           </div>
 
           <Badge variant="secondary" className="gap-2">
             <Users className="w-3 h-3" />
-            {loading ? "Loading..." : `${filteredSellers.length} Experts`}
+            {loading ? "Loading..." : `${filteredSellers.length} People`}
           </Badge>
         </div>
       </header>
@@ -101,7 +101,7 @@ export default function MarketplacePage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
-              placeholder="Search by name, skills, or expertise..."
+              placeholder="Search by name, skills, or interests..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -140,7 +140,7 @@ export default function MarketplacePage() {
             <Card className="text-center py-12">
               <CardContent>
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Loading experts...</h3>
+                <h3 className="text-lg font-semibold mb-2">Loading people...</h3>
                 <p className="text-muted-foreground">Please wait</p>
               </CardContent>
             </Card>
@@ -148,7 +148,7 @@ export default function MarketplacePage() {
             <Card className="text-center py-12">
               <CardContent>
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No experts found</h3>
+                <h3 className="text-lg font-semibold mb-2">No people found</h3>
                 <p className="text-muted-foreground">Try adjusting your search or filters</p>
               </CardContent>
             </Card>
@@ -186,7 +186,7 @@ export default function MarketplacePage() {
                       <p className="text-muted-foreground mb-4 leading-relaxed">{seller.bio}</p>
 
                       <div className="flex flex-wrap gap-2 mb-4">
-                        {seller.expertise.map((tag) => (
+                        {seller.skills.map((tag) => (
                           <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
@@ -213,7 +213,7 @@ export default function MarketplacePage() {
         {/* Load More */}
         {filteredSellers.length > 0 && (
           <div className="text-center mt-8">
-            <Button variant="outline">Load More Experts</Button>
+            <Button variant="outline">Load More People</Button>
           </div>
         )}
       </div>

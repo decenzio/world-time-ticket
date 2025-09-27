@@ -186,7 +186,7 @@ export default function FeedbackPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">{userRole === "buyer" ? "Expert" : "Client"}</span>
+              <span className="text-muted-foreground">{userRole === "buyer" ? "Person" : "Client"}</span>
               <span className="font-medium">{userRole === "buyer" ? booking.sellerName : booking.buyerName}</span>
             </div>
             <div className="flex justify-between">
@@ -287,7 +287,7 @@ export default function FeedbackPage() {
           <CardHeader>
             <CardTitle>Would you recommend?</CardTitle>
             <CardDescription>
-              Would you recommend this {userRole === "buyer" ? "expert" : "client"} to others?
+              Would you recommend this {userRole === "buyer" ? "person" : "client"} to others?
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -323,7 +323,7 @@ export default function FeedbackPage() {
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
               <strong>Note:</strong> Once both parties submit feedback (or after 7 days), payment will be automatically
-              released from escrow to the expert. Your feedback helps maintain quality in our marketplace.
+              released from escrow to the person. Your feedback helps maintain quality in our marketplace.
             </p>
           </CardContent>
         </Card>

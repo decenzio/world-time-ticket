@@ -18,7 +18,7 @@ interface Seller {
   currency: "WLD" | "USDC"
   rating: number
   reviewCount: number
-  expertise: string[]
+  skills: string[]
   calendlyUrl: string
 }
 
@@ -46,7 +46,7 @@ export default function BookingPage() {
           currency: p.currency,
           rating: Number(p.average_rating || 0),
           reviewCount: p.total_reviews || 0,
-          expertise: p.skills || [],
+          skills: p.skills || [],
           calendlyUrl: p.calendly_url || "",
         })
       }
@@ -83,7 +83,7 @@ export default function BookingPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
-          <p className="text-muted-foreground">Loading expert details...</p>
+          <p className="text-muted-foreground">Loading person details...</p>
         </div>
       </div>
     )
@@ -106,7 +106,7 @@ export default function BookingPage() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Expert Info */}
+          {/* Person Info */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -137,7 +137,7 @@ export default function BookingPage() {
               <CardContent>
                 <p className="text-muted-foreground mb-4 leading-relaxed">{seller.bio}</p>
                 <div className="flex flex-wrap gap-2">
-                  {seller.expertise.map((tag) => (
+                  {seller.skills.map((tag) => (
                     <Badge key={tag} variant="outline">
                       {tag}
                     </Badge>
@@ -150,7 +150,7 @@ export default function BookingPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Session Details</CardTitle>
-                <CardDescription>Tell the expert what you'd like to discuss</CardDescription>
+                <CardDescription>Tell the person what you'd like to discuss</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -202,7 +202,7 @@ export default function BookingPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Expert</span>
+                  <span className="text-muted-foreground">Person</span>
                   <span className="font-medium">{seller.name}</span>
                 </div>
                 <div className="flex justify-between">
@@ -240,7 +240,7 @@ export default function BookingPage() {
                   <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-medium text-primary">2</span>
                   </div>
-                  <p className="text-muted-foreground">Schedule via expert's Calendly page</p>
+                  <p className="text-muted-foreground">Schedule via person's Calendly page</p>
                 </div>
                 <div className="flex gap-3">
                   <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
@@ -252,7 +252,7 @@ export default function BookingPage() {
                   <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-xs font-medium text-primary">4</span>
                   </div>
-                  <p className="text-muted-foreground">Payment released to expert</p>
+                  <p className="text-muted-foreground">Payment released to person</p>
                 </div>
               </CardContent>
             </Card>

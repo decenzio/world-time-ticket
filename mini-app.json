@@ -1,6 +1,6 @@
 {
   "name": "WorldTimeTicket",
-  "description": "Professional Time Marketplace - Book verified experts and sell your time",
+  "description": "Time Marketplace - Connect with people and sell your time",
   "version": "1.0.0",
   "icon": "/placeholder-logo.svg",
   "start_url": "/",
@@ -30,6 +30,6 @@
     "primary_color": "#000000",
     "accent_color": "#6366f1"
   },
-  "categories": ["marketplace", "professional_services", "booking"],
-  "tags": ["time", "expertise", "consulting", "coaching", "professional"]
+  "categories": ["marketplace", "social", "booking"],
+  "tags": ["time", "people", "connection", "community", "social"]
 }

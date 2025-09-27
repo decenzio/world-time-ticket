@@ -17,7 +17,7 @@ interface UserProfile {
   currency: string
   rating: number
   reviewCount: number
-  expertise: string[]
+  skills: string[]
   joinedDate: string
   completedSessions: number
 }
@@ -54,7 +54,7 @@ export default function ProfilePage() {
           currency: p.currency,
           rating: Number(p.average_rating || 0),
           reviewCount: p.total_reviews || 0,
-          expertise: p.skills || [],
+          skills: p.skills || [],
           joinedDate: p.created_at,
           completedSessions: p.total_reviews || 0,
         })
@@ -126,7 +126,7 @@ export default function ProfilePage() {
                 <p className="text-muted-foreground mb-4 leading-relaxed">{profile.bio}</p>
 
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {profile.expertise.map((tag) => (
+                  {profile.skills.map((tag) => (
                     <Badge key={tag} variant="outline">
                       {tag}
                     </Badge>
