@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import {useState} from "react"
+import {useEffect, useState} from "react"
 import {useSession} from "next-auth/react"
 import {useRouter} from "next/navigation"
 import {Button} from "@/components/ui/button"
@@ -29,6 +29,8 @@ export default function SellerSetupPage() {
   const router = useRouter()
   const { profile: userProfile } = useAuth()
   const { data: session } = useSession()
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const [profile, setProfile] = useState<SellerProfile>({
     name: userProfile?.full_name || "",
     bio: userProfile?.bio || "",
@@ -41,6 +43,64 @@ export default function SellerSetupPage() {
   const [newSkill, setNewSkill] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Detect existing seller profile for current user and prefill state
+  useEffect(() => {
+    let cancelled = false
+
+    const detectExistingSeller = async () => {
+      try {
+        if (!session?.user?.walletAddress) {
+          setIsInitializing(false)
+          return
+        }
+
+        // Resolve or create the Supabase user id for this wallet
+        const syncRes = await fetch('/api/sync-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: session.user.walletAddress,
+            username: session.user.username,
+            profilePictureUrl: session.user.profilePictureUrl,
+          }),
+        })
+        const syncJson = await syncRes.json()
+        if (!syncRes.ok || !syncJson?.ok || !syncJson?.userId) {
+          setIsInitializing(false)
+          return
+        }
+
+        const supabaseUserId: string = syncJson.userId
+
+        // Fetch person by the resolved Supabase user id
+        const personResult = await peopleService.getPersonByUserId(supabaseUserId)
+        if (!cancelled && personResult.success && personResult.data) {
+          const p = personResult.data
+          setIsEditMode(true)
+          setProfile(prev => ({
+            ...prev,
+            name: userProfile?.full_name || prev.name,
+            bio: userProfile?.bio || prev.bio,
+            hourlyRate: Number(p.hourly_rate) || prev.hourlyRate,
+            currency: p.currency,
+            calendlyUrl: p.calendly_url || "",
+            skills: Array.isArray(p.skills) ? p.skills : [],
+            availability: p.availability_status || prev.availability,
+          }))
+        }
+      } catch (e) {
+        console.warn('Seller setup: failed to detect existing seller', e)
+      } finally {
+        if (!cancelled) setIsInitializing(false)
+      }
+    }
+
+    detectExistingSeller().catch(console.error)
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.walletAddress, session?.user?.username, session?.user?.profilePictureUrl, userProfile?.full_name, userProfile?.bio])
 
   const addSkill = () => {
     if (newSkill.trim() && !profile.skills.includes(newSkill.trim())) {
@@ -63,7 +123,7 @@ export default function SellerSetupPage() {
     e.preventDefault()
 
     if (!session?.user?.id || !session?.user?.walletAddress) {
-      setError("Please log in to create a seller profile")
+      setError("Please log in to create or update your seller profile")
       return
     }
 
@@ -154,8 +214,8 @@ export default function SellerSetupPage() {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Setup Your Seller Profile</h1>
-            <p className="text-muted-foreground">Share your skills and interests with verified people</p>
+            <h1 className="text-2xl font-bold">{isEditMode ? "Edit Your Seller Profile" : "Setup Your Seller Profile"}</h1>
+            <p className="text-muted-foreground">{isEditMode ? "Update your details and availability" : "Share your skills and interests with verified people"}</p>
           </div>
         </div>
 
@@ -308,8 +368,8 @@ export default function SellerSetupPage() {
             <Button type="button" variant="outline" onClick={() => router.back()}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !profile.calendlyUrl.trim()} className="flex-1">
-              {isLoading ? "Creating Profile..." : "Create Seller Profile"}
+            <Button type="submit" disabled={isInitializing || isLoading || !profile.calendlyUrl.trim()} className="flex-1">
+              {isLoading ? (isEditMode ? "Updating Profile..." : "Creating Profile...") : (isEditMode ? "Update Seller Profile" : "Create Seller Profile")}
             </Button>
           </div>
         </form>

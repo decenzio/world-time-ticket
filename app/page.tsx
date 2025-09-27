@@ -4,7 +4,7 @@ import {useEffect, useState} from "react"
 import {useRouter} from "next/navigation"
 import {useSession, getSession} from "next-auth/react"
 import {useAuthSession} from "@/lib/use-auth-session"
-import {statisticsService} from "@/lib/services"
+import {statisticsService, peopleService} from "@/lib/services"
 import {Button} from "@/components/ui/button"
 import {Card, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
 import {Badge} from "@/components/ui/badge"
@@ -32,6 +32,8 @@ export default function MiniApp() {
   const [currentView, setCurrentView] = useState<AppView>('home')
   const [authError, setAuthError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<string[]>([])
+  const [isSeller, setIsSeller] = useState<boolean | null>(null)
+  const [sellerCheckLoading, setSellerCheckLoading] = useState(false)
 
   const fetchStats = async () => {
     setStatsLoading(true)
@@ -67,6 +69,45 @@ export default function MiniApp() {
       })
     }
   }, [session, status])
+
+  // Detect if the current user already has a seller profile
+  useEffect(() => {
+    let cancelled = false
+    const checkSeller = async () => {
+      try {
+        if (!session?.user?.walletAddress) {
+          setIsSeller(null)
+          return
+        }
+        setSellerCheckLoading(true)
+        const res = await fetch('/api/sync-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: session.user.walletAddress,
+            username: session.user.username,
+            profilePictureUrl: session.user.profilePictureUrl,
+          })
+        })
+        const json = await res.json()
+        if (!res.ok || !json?.ok || !json?.userId) {
+          setIsSeller(null)
+          return
+        }
+        const supabaseUserId = json.userId as string
+        const result = await peopleService.getPersonByUserId(supabaseUserId)
+        if (!cancelled) {
+          setIsSeller(!!(result.success && result.data))
+        }
+      } catch (_e) {
+        if (!cancelled) setIsSeller(null)
+      } finally {
+        if (!cancelled) setSellerCheckLoading(false)
+      }
+    }
+    checkSeller().catch(console.error)
+    return () => { cancelled = true }
+  }, [session?.user?.walletAddress, session?.user?.username, session?.user?.profilePictureUrl])
 
   const handleAuthSuccess = async () => {
     console.log('MiniApp - Authentication successful')
@@ -229,7 +270,7 @@ export default function MiniApp() {
                   <Button variant="ghost" size="sm" onClick={() => navigateToView('home')}>
                     <ArrowLeft className="w-4 h-4" />
                   </Button>
-                  <h1 className="text-xl font-bold">Become a Seller</h1>
+                  <h1 className="text-xl font-bold">{isSeller ? 'Update Seller Profile' : 'Become a Seller'}</h1>
                 </div>
                 <AuthButton />
               </div>
@@ -239,10 +280,10 @@ export default function MiniApp() {
                 <Plus className="w-16 h-16 text-accent mx-auto mb-4" />
                 <h2 className="text-2xl font-bold mb-4">Offer Your Time</h2>
                 <p className="text-muted-foreground mb-8">
-                  Create your profile and start earning from your expertise
+                  {isSeller ? 'Update your seller profile details and availability' : 'Create your profile and start earning from your expertise'}
                 </p>
                 <Button onClick={() => router.push('/seller/setup')}>
-                  Set Up Seller Profile
+                  {isSeller ? 'Update Seller Profile' : 'Set Up Seller Profile'}
                 </Button>
               </div>
             </main>
@@ -298,10 +339,10 @@ export default function MiniApp() {
                     <div className="text-center">
                       <Plus className="w-12 h-12 text-accent mx-auto mb-4" />
                       <h3 className="text-xl font-semibold mb-2">Offer Your Time</h3>
-                      <p className="text-muted-foreground mb-4">Create your profile and start earning from your expertise</p>
+                      <p className="text-muted-foreground mb-4">{isSeller ? 'Update your seller details and availability' : 'Create your profile and start earning from your expertise'}</p>
                       <Button variant="outline" className="w-full">
                         <Clock className="w-4 h-4 mr-2" />
-                        Become a Seller
+                        {isSeller ? 'Update Seller Profile' : 'Become a Seller'}
                       </Button>
                     </div>
                   </Card>
@@ -412,13 +453,11 @@ export default function MiniApp() {
     } : null
   })
 
-  // Add error boundary for debugging
+  // Add error boundary for debugging (loading already handled above)
   if (status === 'unauthenticated') {
     console.log('MiniApp - User is unauthenticated, showing login screen')
-  } else if (status === 'authenticated' && session?.user) {
+  } else if (status === 'authenticated') {
     console.log('MiniApp - User is authenticated, showing home screen')
-  } else if (status === 'loading') {
-    console.log('MiniApp - Session is loading...')
   } else {
     console.log('MiniApp - Unknown state:', status, session)
   }
