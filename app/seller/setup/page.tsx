@@ -62,7 +62,7 @@ export default function SellerSetupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session?.user?.walletAddress) {
       setError("Please log in to create a seller profile")
       return
     }
@@ -86,14 +86,15 @@ export default function SellerSetupPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          walletAddress: session.user.walletAddress,
+          walletAddress: session.user.walletAddress!,
           username: session.user.username,
           profilePictureUrl: session.user.profilePictureUrl,
         }),
       })
       const syncJson = await syncRes.json()
       if (!syncRes.ok || !syncJson?.ok || !syncJson?.userId) {
-        throw new Error(syncJson?.error || 'Failed to map wallet to user')
+        setError(syncJson?.error || 'Failed to map wallet to user')
+        return
       }
       const supabaseUserId: string = syncJson.userId
 
@@ -104,7 +105,7 @@ export default function SellerSetupPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: supabaseUserId,
-            email: `wallet-${session.user.walletAddress.toLowerCase()}@wallet.worldapp`,
+            email: `wallet-${session.user.walletAddress!.toLowerCase()}@wallet.worldapp`,
             full_name: profile.name,
             bio: profile.bio,
           }),
@@ -112,7 +113,8 @@ export default function SellerSetupPage() {
         
         if (!updateRes.ok) {
           const errorData = await updateRes.json()
-          throw new Error(`Database operation failed: ${errorData.error || "Failed to update profile"}`)
+          setError(`Database operation failed: ${errorData.error || "Failed to update profile"}`)
+          return
         }
       }
 
@@ -127,7 +129,8 @@ export default function SellerSetupPage() {
       })
 
       if (!personResult.success) {
-        throw new Error(personResult.error?.message || "Failed to create seller profile")
+        setError(personResult.error?.message || "Failed to create seller profile")
+        return
       }
 
       router.push("/seller/dashboard")
@@ -266,7 +269,12 @@ export default function SellerSetupPage() {
                   value={newSkill}
                   onChange={(e) => setNewSkill(e.target.value)}
                   placeholder="e.g., Business Strategy, Design, Coding"
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addSkill())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addSkill()
+                    }
+                  }}
                 />
                 <Button type="button" onClick={addSkill} size="sm">
                   <Plus className="w-4 h-4" />
