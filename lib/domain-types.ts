@@ -1,0 +1,94 @@
+// Domain types and interfaces
+import type { Database } from "./types";
+
+// Base types from database
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type Person = Database["public"]["Tables"]["people"]["Row"];
+export type Booking = Database["public"]["Tables"]["bookings"]["Row"];
+export type Review = Database["public"]["Tables"]["reviews"]["Row"];
+
+// Composed types for UI components
+export interface PersonWithProfile extends Person {
+  profiles: Profile;
+}
+
+export interface BookingWithDetails extends Booking {
+  person?: PersonWithProfile;
+  profiles?: Profile;
+}
+
+export interface ReviewWithProfile extends Review {
+  profiles: Profile;
+}
+
+// Input types for creating entities
+export interface CreatePersonInput {
+  user_id: string;
+  hourly_rate: number;
+  currency?: "WLD" | "USDC";
+  calendly_url?: string;
+  skills?: string[];
+  availability_status?: string;
+}
+
+export interface CreateBookingInput {
+  client_id: string;
+  person_id: string;
+  session_notes?: string;
+  hourly_rate: number;
+  currency: "WLD" | "USDC";
+  total_amount: number;
+}
+
+export interface CreateReviewInput {
+  booking_id: string;
+  client_id: string;
+  person_id: string;
+  rating: number;
+  comment?: string;
+  tags?: string[];
+}
+
+// Filter types
+export interface PeopleFilters {
+  search?: string;
+  priceRange?: "all" | "under-100" | "100-200" | "over-200";
+  isActive?: boolean;
+}
+
+export interface BookingFilters {
+  status?: Booking["status"];
+  personId?: string;
+  clientId?: string;
+}
+
+// API Response types
+export interface ApiResponse<T> {
+  data: T | null;
+  error: Error | null;
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  count?: number;
+  hasMore?: boolean;
+}
+
+// Constants
+export const BOOKING_STATUS = {
+  PENDING: "pending",
+  CONFIRMED: "confirmed",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+} as const;
+
+export const CURRENCY = {
+  WLD: "WLD",
+  USDC: "USDC",
+} as const;
+
+export const PRICE_RANGES = {
+  ALL: "all",
+  UNDER_100: "under-100",
+  RANGE_100_200: "100-200",
+  OVER_200: "over-200",
+} as const;
