@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Shield, Wallet, Loader2 } from "lucide-react"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { MiniKit } from "@worldcoin/minikit-js"
+import { useRouter } from "next/navigation"
 
 interface WalletAuthProps {
   onError?: (error: string) => void
@@ -14,6 +15,8 @@ interface WalletAuthProps {
 export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
+  const router = useRouter()
+  const { update } = useSession()
 
   useEffect(() => {
     // Check if MiniKit is available
@@ -99,7 +102,13 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
         throw new Error(signInResult.error)
       }
 
+      // Successful login - update the session and trigger callbacks
+      await update() // This will refresh the session data
       onSuccess?.()
+      
+      // Navigate to home page to ensure we're on the right route
+      router.push('/')
+      router.refresh()
     } catch (error) {
       console.error('Wallet authentication failed:', error)
       onError?.(error instanceof Error ? error.message : 'Authentication failed')

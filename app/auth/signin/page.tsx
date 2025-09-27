@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Shield, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { WalletAuth } from "@/components/wallet-auth"
+import { useRouter } from "next/navigation"
 
 export default function SignInPage() {
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -19,7 +21,15 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <WalletAuth />
+          <WalletAuth 
+            onSuccess={() => {
+              console.log('Login successful on signin page, redirecting to home')
+              router.push('/')
+            }}
+            onError={(error) => {
+              console.error('Login failed on signin page:', error)
+            }}
+          />
           
           <div className="text-center">
             <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">

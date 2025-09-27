@@ -41,5 +41,15 @@ export function AuthButton() {
     )
   }
 
-  return <WalletAuth />
+  return (
+    <WalletAuth 
+      onSuccess={() => {
+        console.log('Authentication successful!')
+      }}
+      onError={(error) => {
+        console.error('Authentication error:', error)
+        // You could add toast notifications here
+      }}
+    />
+  )
 }

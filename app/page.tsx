@@ -56,7 +56,21 @@ export default function HomePage() {
     localStorage.setItem("timeSlot_dev_mode", newMode.toString())
   }
 
-  if (!session?.user) {
+  // Debug logging for session status
+  console.log('HomePage - Session status:', status, 'Session user:', session?.user)
+  
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+  
+  if (status === 'unauthenticated' || !session?.user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="container mx-auto px-4 py-8">
