@@ -44,7 +44,7 @@ export const authOptions: NextAuthOptions = {
           const user = {
             id: credentials.walletAddress as string,
             name: stringOrUndefined(credentials.username) || (credentials.walletAddress as string),
-            email: null,
+            email: null as string | null,
             image: stringOrUndefined(credentials.profilePictureUrl) || null,
             verificationLevel: stringOrUndefined(credentials.verificationLevel) || "device",
             walletAddress: credentials.walletAddress as string,
@@ -91,12 +91,12 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.worldId as string || token.sub || ""
         session.user.walletAddress = token.walletAddress as string || ""
-        session.user.username = token.username as string || null
-        session.user.profilePictureUrl = token.profilePictureUrl as string || null
+        session.user.username = token.username as string | null || null
+        session.user.profilePictureUrl = token.profilePictureUrl as string | null || null
         session.user.permissions = token.permissions as any || undefined
         session.user.optedIntoOptionalAnalytics = token.optedIntoOptionalAnalytics as boolean || false
         session.user.worldAppVersion = token.worldAppVersion as number || undefined
-        session.user.deviceOS = token.deviceOS as string || null
+        session.user.deviceOS = token.deviceOS as string | null || null
         session.user.verificationLevel = token.verificationLevel as string || "device"
       }
       return session

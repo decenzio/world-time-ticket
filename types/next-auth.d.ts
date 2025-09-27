@@ -8,15 +8,15 @@ declare module "next-auth" {
     image?: string | null
     verificationLevel?: string
     walletAddress?: string
-    username?: string
-    profilePictureUrl?: string
+    username?: string | null
+    profilePictureUrl?: string | null
     permissions?: {
       notifications: boolean
       contacts: boolean
     }
     optedIntoOptionalAnalytics?: boolean
     worldAppVersion?: number
-    deviceOS?: string
+    deviceOS?: string | null
     worldIdProof?: string
   }
 
@@ -28,15 +28,15 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     walletAddress?: string
-    username?: string
-    profilePictureUrl?: string
+    username?: string | null
+    profilePictureUrl?: string | null
     permissions?: {
       notifications: boolean
       contacts: boolean
     }
     optedIntoOptionalAnalytics?: boolean
     worldAppVersion?: number
-    deviceOS?: string
+    deviceOS?: string | null
     verificationLevel?: string
     worldId?: string
   }

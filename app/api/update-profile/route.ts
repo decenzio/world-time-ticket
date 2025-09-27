@@ -10,7 +10,12 @@ export async function POST(req: NextRequest) {
       }, { status: 500 })
     }
 
-    const { userId, full_name, bio, email } = await req.json()
+    const { userId, full_name, bio, email }: {
+      userId: string;
+      full_name?: string;
+      bio?: string;
+      email?: string;
+    } = await req.json()
 
     if (!userId) {
       return NextResponse.json({ ok: false, error: "userId is required" }, { status: 400 })
@@ -21,7 +26,7 @@ export async function POST(req: NextRequest) {
       .from('profiles')
       .select('email')
       .eq('id', userId)
-      .maybeSingle()
+      .maybeSingle() as { data: { email: string } | null; error: any }
 
     if (fetchError) {
       return NextResponse.json({ ok: false, error: fetchError.message }, { status: 500 })
@@ -33,14 +38,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Update profile using upsert to handle both create and update cases
-    const { data, error } = await supabaseAdmin
+    const profileData = {
+      id: userId,
+      email: email || existingProfile?.email || '',
+      full_name: full_name || null,
+      bio: bio || null,
+    }
+
+    const { data, error } = await supabaseAdmin!
       .from('profiles')
-      .upsert({
-        id: userId,
-        email: email || existingProfile?.email,
-        full_name: full_name || null,
-        bio: bio || null,
-      })
+      .upsert(profileData as any)
       .select()
       .single()
 

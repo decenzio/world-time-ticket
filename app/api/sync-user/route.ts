@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         .from('profiles')
         .select('id')
         .eq('email', pseudoEmail)
-        .maybeSingle()
+        .maybeSingle() as { data: { id: string } | null; error: any }
 
       if (profileError || !existingProfile) {
         return NextResponse.json({ ok: false, error: createError.message }, { status: 500 })
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
               email: pseudoEmail,
               full_name: username || null,
               avatar_url: profilePictureUrl || null,
-            })
+            } as any)
           
           if (createError) {
             console.error('Failed to create profile manually:', createError.message)
