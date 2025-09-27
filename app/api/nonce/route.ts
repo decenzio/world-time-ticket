@@ -8,7 +8,7 @@ export function GET(req: NextRequest) {
   // The nonce should be stored somewhere that is not tamperable by the client
   // Optionally you can HMAC the nonce with a secret key stored in your environment
   cookies().set("siwe", nonce, { 
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     httpOnly: true,
     sameSite: "lax",
     maxAge: 60 * 5 // 5 minutes

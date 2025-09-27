@@ -61,17 +61,20 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
       // Get nonce from our API
       console.log('Step 1: Getting nonce from API...')
       const res = await fetch("/api/nonce")
-      
-      if (!res.ok) {
-        throw new Error(`Failed to get nonce: ${res.status} ${res.statusText}`)
-      }
-      
       const { nonce } = await res.json()
       console.log('Step 1: Got nonce:', nonce)
 
       // Use MiniKit for wallet authentication
       console.log('Step 2: Calling MiniKit walletAuth...')
-      const { finalPayload } = await MiniKit.commandsAsync.walletAuth({
+      console.log('Step 2: MiniKit walletAuth input:', {
+        nonce: nonce,
+        requestId: '0',
+        expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
+        notBefore: new Date(new Date().getTime() - 24 * 60 * 60 * 1000),
+        statement: 'Sign in to WorldTimeTicket to access the marketplace and book time with verified humans.',
+      })
+      
+      const { commandPayload: generateMessageResult, finalPayload } = await MiniKit.commandsAsync.walletAuth({
         nonce: nonce,
         requestId: '0',
         expirationTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000),
@@ -79,7 +82,13 @@ export function WalletAuth({ onError, onSuccess }: WalletAuthProps) {
         statement: 'Sign in to WorldTimeTicket to access the marketplace and book time with verified humans.',
       })
 
-      console.log('Step 2: Wallet auth response:', finalPayload)
+      console.log('Step 2: Command payload (generateMessageResult):', generateMessageResult)
+      console.log('Step 2: Final payload:', finalPayload)
+      console.log('Step 2: Final payload type:', typeof finalPayload)
+      
+      if (!finalPayload) {
+        throw new Error('finalPayload is undefined in wallet auth result')
+      }
 
       if (finalPayload.status === 'error') {
         console.error('Wallet auth error:', finalPayload.error)
