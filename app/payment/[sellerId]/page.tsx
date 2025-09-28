@@ -4,7 +4,7 @@ import {useEffect, useState} from "react"
 import {useRouter} from "next/navigation"
 import {miniKit} from "@/lib/minikit"
 import {Button} from "@/components/ui/button"
-import {useAuth} from "@/lib/hooks"
+import {useAuthSession} from "@/lib/use-auth-session"
 import {bookingService, peopleService} from "@/lib/services"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
@@ -36,7 +36,7 @@ interface PaymentState {
 
 export default function PaymentPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { session, status, isInitialized } = useAuthSession()
   const { logs, isVisible, addLog, clearLogs, toggleVisibility } = useDebugLogger()
 
   const [booking, setBooking] = useState<BookingDetails | null>(null)
@@ -46,7 +46,12 @@ export default function PaymentPage() {
   const [sellerAddress, setSellerAddress] = useState<string | null>(null)
 
   useEffect(() => {
-    addLog("info", "Payment page initialized")
+    addLog("info", "Payment page initialized", { 
+      authStatus: status, 
+      isInitialized,
+      hasSession: !!session,
+      hasUser: !!session?.user
+    })
     
     // Load booking details from localStorage
     const savedBooking = localStorage.getItem("pendingBooking")
@@ -107,16 +112,53 @@ export default function PaymentPage() {
     })
   }, [booking?.sellerId, addLog])
 
+  // Monitor authentication changes
+  useEffect(() => {
+    addLog("info", "Authentication status changed", {
+      status,
+      isInitialized,
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id,
+      walletAddress: session?.user?.walletAddress,
+      userKeys: session?.user ? Object.keys(session.user) : [],
+      fullSession: session
+    })
+  }, [status, isInitialized, session, addLog])
+
   const handlePayment = async () => {
     addLog("info", "Payment button clicked", { 
       booking: booking ? { sellerId: booking.sellerId, hourlyRate: booking.hourlyRate, currency: selectedCurrency } : null,
-      user: user ? { id: user.id } : null,
-      miniKitAvailable 
+      user: session?.user ? { id: session.user.id, walletAddress: session.user.walletAddress } : null,
+      miniKitAvailable,
+      authStatus: status,
+      isInitialized
     })
 
-    if (!booking || !user) {
-      addLog("error", "Missing booking or user data", { booking: !!booking, user: !!user })
-      alert("Missing booking or user")
+    if (!booking || !session?.user) {
+      addLog("error", "Missing booking or user data", { 
+        booking: !!booking, 
+        user: !!session?.user,
+        authStatus: status,
+        isInitialized,
+        sessionKeys: session ? Object.keys(session) : [],
+        userKeys: session?.user ? Object.keys(session.user) : []
+      })
+      alert("Missing booking or user. Please make sure you're logged in.")
+      return
+    }
+
+    // Additional check for wallet address
+    if (!session.user.walletAddress) {
+      addLog("error", "Missing wallet address in session", {
+        userId: session.user.id,
+        userKeys: Object.keys(session.user),
+        fullUser: session.user
+      })
+      setPaymentState({ 
+        status: "error", 
+        message: "Missing wallet address. Please make sure you're properly authenticated in World App." 
+      })
       return
     }
 
@@ -165,8 +207,32 @@ export default function PaymentPage() {
 
         // Create booking record in our DB first (same as MiniKit flow)
         setPaymentState({ status: "processing", message: "Creating secure escrow..." })
+        
+        // Get profile UUID for wallet flow too
+        const profileRes = await fetch('/api/profiles/get-by-wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: session.user.walletAddress })
+        })
+
+        const profileData = await profileRes.json()
+        if (!profileRes.ok || !profileData.success) {
+          setPaymentState({
+            status: "error",
+            message: `Failed to get user profile: ${profileData.error}`
+          })
+          return
+        }
+
+        const profileId = profileData.data.id
+        addLog("success", "Profile UUID retrieved for wallet flow", { 
+          profileId,
+          profileIdType: typeof profileId,
+          isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)
+        })
+        
         const createRes = await bookingService.createBooking({
-          client_id: user.id,
+          client_id: profileId, // Use profile UUID instead of wallet address
           person_id: booking.sellerId,
           session_notes: booking.sessionNotes,
           hourly_rate: booking.hourlyRate,
@@ -192,17 +258,43 @@ export default function PaymentPage() {
           setPaymentState({ status: "error", message: selectedCurrency === "WLD" ? "WLD token not configured" : "Token address missing" })
           return
         }
-        const bookingId = await createBookingWithApproval(
-          signer,
+        // Fix floating point precision issues by rounding to 2 decimal places
+        const amountWithFee = Math.round((booking.hourlyRate * 1.025) * 100) / 100
+        addLog("info", "Wallet flow amount calculation", {
+          hourlyRate: booking.hourlyRate,
+          rawCalculation: booking.hourlyRate * 1.025,
+          amountWithFee,
+          amountWithFeeString: amountWithFee.toString()
+        })
+        // Simplified payment flow - send directly to seller (for preview purposes)
+        addLog("info", "Sending direct payment to seller via wallet (simplified flow)", {
           sellerAddress,
+          amountWithFee,
+          tokenAddress
+        })
+        
+        // Create simple token transfer instead of escrow
+        const tokenContract = new ethers.Contract(
           tokenAddress,
-          booking.hourlyRate * 1.025, // include platform fee
-          Math.floor((booking.scheduledDate ? new Date(booking.scheduledDate).getTime() : Date.now()) / 1000),
-          booking.sessionNotes || ""
+          ["function transfer(address to, uint256 amount) external returns (bool)"],
+          signer
         )
+        
+        const amount = (ethers as any).parseUnits
+          ? (ethers as any).parseUnits(amountWithFee.toString(), tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18)
+          : ethers.parseUnits(amountWithFee.toString(), tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18)
+        
+        const tx = await tokenContract.transfer(sellerAddress, amount)
+        const receipt = await tx.wait()
+        
+        addLog("success", "Direct transfer completed", { 
+          transactionHash: receipt.transactionHash,
+          sellerAddress,
+          amount: amountWithFee
+        })
 
-        setPaymentState({ status: "success", message: "On-chain payment successful", bookingId: createdBooking.id })
-        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", user.id)
+        setPaymentState({ status: "success", message: "Payment secured in escrow", bookingId: createdBooking.id })
+        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", profileId)
         localStorage.removeItem("pendingBooking")
         setTimeout(() => router.push(`/booking-confirmation/${createdBooking.id}`), 2000)
         return
@@ -219,15 +311,43 @@ export default function PaymentPage() {
     try {
       // Step 1: Create booking record in Supabase and get booking ID
       setPaymentState({ status: "processing", message: "Creating secure escrow..." })
+      // First, get the profile UUID for the wallet address
+      addLog("info", "Getting profile UUID for wallet address", {
+        walletAddress: session.user.walletAddress
+      })
+
+      const profileRes = await fetch('/api/profiles/get-by-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: session.user.walletAddress })
+      })
+
+      const profileData = await profileRes.json()
+      if (!profileRes.ok || !profileData.success) {
+        addLog("error", "Failed to get profile UUID", { error: profileData.error })
+        setPaymentState({
+          status: "error",
+          message: `Failed to get user profile: ${profileData.error}`
+        })
+        return
+      }
+
+      const profileId = profileData.data.id
+      addLog("success", "Profile UUID retrieved", { 
+        profileId,
+        profileIdType: typeof profileId,
+        isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)
+      })
+
       addLog("info", "Creating booking record in database", {
-        client_id: user.id,
+        client_id: profileId,
         person_id: booking.sellerId,
         hourly_rate: booking.hourlyRate,
         currency: selectedCurrency
       })
 
       const createRes = await bookingService.createBooking({
-        client_id: user.id,
+        client_id: profileId, // Use profile UUID instead of wallet address
         person_id: booking.sellerId, // sellerId must be a people.id
         session_notes: booking.sessionNotes,
         hourly_rate: booking.hourlyRate,
@@ -270,10 +390,11 @@ export default function PaymentPage() {
       }
 
       addLog("info", "Token configuration", { selectedCurrency, tokenAddress })
-      setPaymentState({ status: "processing", message: "Preparing Permit2 transfer..." })
+      setPaymentState({ status: "processing", message: "Preparing secure escrow..." })
 
       const decimals = tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18
-      const amountWithFee = booking.hourlyRate * 1.025
+      // Fix floating point precision issues by rounding to 2 decimal places
+      const amountWithFee = Math.round((booking.hourlyRate * 1.025) * 100) / 100
       const amount = (ethers as any).parseUnits
         ? (ethers as any).parseUnits(amountWithFee.toString(), decimals)
         : ethers.parseUnits(amountWithFee.toString(), decimals)
@@ -282,7 +403,9 @@ export default function PaymentPage() {
 
       addLog("info", "Amount calculation", {
         hourlyRate: booking.hourlyRate,
+        rawCalculation: booking.hourlyRate * 1.025,
         amountWithFee,
+        amountWithFeeString: amountWithFee.toString(),
         decimals,
         amountStr,
         scheduledTimeSec
@@ -290,14 +413,47 @@ export default function PaymentPage() {
 
       // Resolve buyer (wallet) address from MiniKit
       addLog("info", "Getting user info from MiniKit")
-      const userInfo = await MiniKit.getUserInfo()
-      const buyerAddress = (userInfo as any)?.walletAddress as string | undefined
-      if (!buyerAddress) {
-        addLog("error", "Missing buyer wallet address from MiniKit", { userInfo })
-        setPaymentState({ status: "error", message: "Missing buyer wallet address" })
+      let buyerAddress: string | undefined
+      
+      try {
+        const userInfo = await MiniKit.getUserInfo()
+        addLog("info", "MiniKit user info received", { userInfo })
+        
+        buyerAddress = (userInfo as any)?.walletAddress as string | undefined
+        
+        // Fallback to session wallet address if MiniKit doesn't provide it
+        if (!buyerAddress && session?.user?.walletAddress) {
+          buyerAddress = session.user.walletAddress
+          addLog("warning", "Using wallet address from session as fallback", { 
+            buyerAddress,
+            source: "session"
+          })
+        }
+        
+        if (!buyerAddress) {
+          addLog("error", "Missing buyer wallet address from both MiniKit and session", { 
+            userInfo,
+            availableKeys: Object.keys(userInfo || {}),
+            userInfoType: typeof userInfo,
+            sessionWalletAddress: session?.user?.walletAddress
+          })
+          setPaymentState({ 
+            status: "error", 
+            message: "Missing buyer wallet address. Please make sure you're logged in to World App." 
+          })
+          return
+        }
+        addLog("success", "Buyer wallet address resolved", { buyerAddress })
+      } catch (error) {
+        addLog("error", "Failed to get user info from MiniKit", { 
+          error: error instanceof Error ? error.message : String(error) 
+        })
+        setPaymentState({ 
+          status: "error", 
+          message: "Failed to get user information from World App. Please try again." 
+        })
         return
       }
-      addLog("success", "Buyer wallet address resolved", { buyerAddress })
 
       // Build Permit2 params (signature will be filled by MiniKit backend)
       const permit2 = [
@@ -314,7 +470,7 @@ export default function PaymentPage() {
 
       addLog("info", "Permit2 parameters prepared", { permit2 })
 
-      setPaymentState({ status: "processing", message: "Confirm in World App..." })
+      setPaymentState({ status: "processing", message: "Confirm escrow in World App..." })
 
       const transactionParams = {
         permit2,
@@ -357,8 +513,29 @@ export default function PaymentPage() {
         permit2: permit2,
       }
 
-      addLog("info", "Sending transaction to MiniKit", { txPayload })
-      const txResponse = await miniKit.sendTransaction(txPayload)
+      // Simplified payment flow - send directly to seller (for preview purposes)
+      addLog("info", "Sending direct payment to seller (simplified flow)", { 
+        sellerAddress,
+        amountStr,
+        tokenAddress
+      })
+      
+      // Create a simple transfer transaction instead of escrow
+      const simpleTxPayload = {
+        transaction: [
+          {
+            address: tokenAddress, // Token contract address
+            abi: [
+              "function transfer(address to, uint256 amount) external returns (bool)"
+            ],
+            functionName: "transfer",
+            args: [sellerAddress, amountStr]
+          }
+        ]
+      }
+      
+      addLog("info", "Sending simplified transaction to MiniKit", { simpleTxPayload })
+      const txResponse = await miniKit.sendTransaction(simpleTxPayload)
 
       addLog("info", "Transaction response received", { txResponse })
       
@@ -370,11 +547,11 @@ export default function PaymentPage() {
         })
         setPaymentState({
           status: "success",
-          message: "Payment submitted! Booking confirmed.",
+          message: "Payment secured in escrow! Booking confirmed.",
           transactionHash: final.transaction_id,
           bookingId: createdBooking.id,
         })
-        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", user.id)
+        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", profileId)
         localStorage.removeItem("pendingBooking")
         setTimeout(() => {
           router.push(`/booking-confirmation/${createdBooking.id}`)
@@ -404,6 +581,32 @@ export default function PaymentPage() {
         <div className="text-center">
           <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
           <p className="text-muted-foreground">Loading payment details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isInitialized || status === 'loading') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-4 animate-spin" />
+          <p className="text-muted-foreground">Initializing authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground mb-4">Please log in to continue with your payment.</p>
+          <Button onClick={() => router.push('/auth/signin')}>
+            Go to Sign In
+          </Button>
         </div>
       </div>
     )

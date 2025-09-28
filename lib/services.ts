@@ -125,7 +125,30 @@ export class BookingService {
       return validationResult;
     }
 
-    return repositories.createBooking(input);
+    // Use API route instead of direct repository call
+    try {
+      const response = await fetch('/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok || !result.success) {
+        return {
+          success: false,
+          error: new ValidationError(result.error || 'Failed to create booking')
+        }
+      }
+      
+      return { success: true, data: result.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: new ValidationError(error instanceof Error ? error.message : 'Failed to create booking')
+      }
+    }
   }
 
   async updateBookingStatus(
@@ -142,7 +165,30 @@ export class BookingService {
       return validationResult;
     }
 
-    return repositories.updateBookingStatus(bookingId, status);
+    // Use API route instead of direct repository call
+    try {
+      const response = await fetch('/api/bookings/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId, status, userId })
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok || !result.success) {
+        return {
+          success: false,
+          error: new ValidationError(result.error || 'Failed to update booking status')
+        }
+      }
+      
+      return { success: true, data: result.data }
+    } catch (error) {
+      return {
+        success: false,
+        error: new ValidationError(error instanceof Error ? error.message : 'Failed to update booking status')
+      }
+    }
   }
 
   async getBookingById(id: string): Promise<Result<BookingWithDetails | null>> {
