@@ -1,4 +1,5 @@
-import { ethers } from "ethers"
+import { ethers } from "ethers";
+import { ESCROW_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS } from "@/lib/config";
 
 // Contract ABI (simplified for key functions)
 export const ESCROW_ABI = [
@@ -14,12 +15,10 @@ export const ESCROW_ABI = [
   "event FundsRefunded(bytes32 indexed bookingId, address indexed buyer, uint256 amount)",
   "event BookingDisputed(bytes32 indexed bookingId, address indexed initiator)",
   "event FeedbackSubmitted(bytes32 indexed bookingId, address indexed user, bool isBuyer)",
-]
+];
 
 // Contract addresses (testnet)
-export const ESCROW_CONTRACT_ADDRESS = "0x..." // Deploy address will go here
-export const USDC_TOKEN_ADDRESS = "0x..." // Testnet USDC address
-export const WLD_TOKEN_ADDRESS = "0x..." // Testnet WLD address
+// WLD token left as env/config-driven value in lib/config if needed
 
 export enum BookingStatus {
   Deposited = 0,
@@ -29,25 +28,36 @@ export enum BookingStatus {
 }
 
 export interface BookingDetails {
-  buyer: string
-  seller: string
-  token: string
-  amount: bigint
-  createdAt: bigint
-  scheduledTime: bigint
-  status: BookingStatus
-  buyerFeedback: boolean
-  sellerFeedback: boolean
-  sessionNotes: string
+  buyer: string;
+  seller: string;
+  token: string;
+  amount: bigint;
+  createdAt: bigint;
+  scheduledTime: bigint;
+  status: BookingStatus;
+  buyerFeedback: boolean;
+  sellerFeedback: boolean;
+  sessionNotes: string;
 }
 
 export class EscrowContract {
-  private contract: ethers.Contract
-  private signer: ethers.Signer
+  private contract: ethers.Contract;
+  private signer: ethers.Signer;
+  private contractAddress: string;
 
-  constructor(signer: ethers.Signer) {
-    this.signer = signer
-    this.contract = new ethers.Contract(ESCROW_CONTRACT_ADDRESS, ESCROW_ABI, signer)
+  /**
+   * Create an EscrowContract instance.
+   * @param signer ethers.Signer used to send transactions
+   * @param contractAddress optional contract address override; falls back to config
+   */
+  constructor(signer: ethers.Signer, contractAddress?: string) {
+    this.signer = signer;
+    this.contractAddress = contractAddress || ESCROW_CONTRACT_ADDRESS;
+    this.contract = new ethers.Contract(
+      this.contractAddress,
+      ESCROW_ABI,
+      signer
+    );
   }
 
   async createBooking(
@@ -55,39 +65,50 @@ export class EscrowContract {
     token: string,
     amount: bigint,
     scheduledTime: bigint,
-    sessionNotes: string,
+    sessionNotes: string
   ): Promise<string> {
-    const tx = await this.contract.createBooking(seller, token, amount, scheduledTime, sessionNotes)
+    const tx = await this.contract.createBooking(
+      seller,
+      token,
+      amount,
+      scheduledTime,
+      sessionNotes
+    );
 
-    const receipt = await tx.wait()
+    const receipt = await tx.wait();
 
     // Extract booking ID from event
-    const event = receipt.events?.find((e: any) => e.event === "BookingCreated")
-    return event?.args?.bookingId
+    const event = receipt.events?.find(
+      (e: any) => e.event === "BookingCreated"
+    );
+    const bookingId = event?.args?.bookingId;
+    if (!bookingId)
+      throw new Error("BookingCreated event not found in receipt");
+    return bookingId;
   }
 
   async submitFeedback(bookingId: string): Promise<void> {
-    const tx = await this.contract.submitFeedback(bookingId)
-    await tx.wait()
+    const tx = await this.contract.submitFeedback(bookingId);
+    await tx.wait();
   }
 
   async refundFunds(bookingId: string): Promise<void> {
-    const tx = await this.contract.refundFunds(bookingId)
-    await tx.wait()
+    const tx = await this.contract.refundFunds(bookingId);
+    await tx.wait();
   }
 
   async initiateDispute(bookingId: string): Promise<void> {
-    const tx = await this.contract.initiateDispute(bookingId)
-    await tx.wait()
+    const tx = await this.contract.initiateDispute(bookingId);
+    await tx.wait();
   }
 
   async autoReleaseFunds(bookingId: string): Promise<void> {
-    const tx = await this.contract.autoReleaseFunds(bookingId)
-    await tx.wait()
+    const tx = await this.contract.autoReleaseFunds(bookingId);
+    await tx.wait();
   }
 
   async getBooking(bookingId: string): Promise<BookingDetails> {
-    const result = await this.contract.getBooking(bookingId)
+    const result = await this.contract.getBooking(bookingId);
 
     return {
       buyer: result[0],
@@ -100,22 +121,33 @@ export class EscrowContract {
       buyerFeedback: result[7],
       sellerFeedback: result[8],
       sessionNotes: result[9],
-    }
+    };
   }
 
   async getUserBookings(user: string): Promise<string[]> {
-    return await this.contract.getUserBookings(user)
+    return await this.contract.getUserBookings(user);
   }
 
   // Helper function to approve token spending
   async approveToken(tokenAddress: string, amount: bigint): Promise<void> {
     const tokenContract = new ethers.Contract(
       tokenAddress,
-      ["function approve(address spender, uint256 amount) external returns (bool)"],
-      this.signer,
-    )
+      [
+        "function approve(address spender, uint256 amount) external returns (bool)",
+      ],
+      this.signer
+    );
 
-    const tx = await tokenContract.approve(ESCROW_CONTRACT_ADDRESS, amount)
-    await tx.wait()
+    // Approve the escrow contract (use instance contract address)
+    const tx = await tokenContract.approve(this.contractAddress, amount);
+    await tx.wait();
   }
+}
+
+// Factory helper so callers can use dependency injection style creation
+export function createEscrowContract(
+  signer: ethers.Signer,
+  contractAddress?: string
+) {
+  return new EscrowContract(signer, contractAddress);
 }

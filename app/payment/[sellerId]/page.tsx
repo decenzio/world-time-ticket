@@ -10,6 +10,7 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {AlertCircle, ArrowLeft, CheckCircle, Clock, DollarSign, Shield} from "lucide-react"
 import {Tokens} from "@worldcoin/minikit-js"
+import { ESCROW_CONTRACT_ADDRESS } from "@/lib/config"
 
 interface BookingDetails {
   sellerId: string
@@ -110,7 +111,7 @@ export default function PaymentPage() {
 
       const paymentResponse = await miniKit.pay({
         reference: createdBooking.id,
-        to: "0x...", // Escrow contract address
+        to: ESCROW_CONTRACT_ADDRESS,
         tokens: [
           {
             symbol: selectedCurrency === "WLD" ? Tokens.WLD : Tokens.USDC,
