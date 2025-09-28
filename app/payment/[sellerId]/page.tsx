@@ -10,9 +10,8 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {AlertCircle, ArrowLeft, CheckCircle, Clock, DollarSign, Shield} from "lucide-react"
 import { ESCROW_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, WLD_TOKEN_ADDRESS } from "@/lib/config"
-import { ESCROW_ABI, PERMIT2_ABI, createBookingWithApproval } from "@/lib/contracts/escrow"
-import { ethers } from "ethers"
-import { MiniKit } from "@worldcoin/minikit-js"
+// Removed unused imports - using MiniKit Pay command instead of direct contract calls
+import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from "@worldcoin/minikit-js"
 import { PaymentDebug } from "@/components/payment-debug"
 import { useDebugLogger } from "@/lib/use-debug-logger"
 import { DebugTestButton } from "@/components/debug-test-button"
@@ -183,126 +182,12 @@ export default function PaymentPage() {
     }
 
     if (!miniKitAvailable) {
-      // Fallback to in-page wallet flow
-      setPaymentState({ status: "processing", message: "Connecting wallet..." })
-      try {
-        if (!(window as any).ethereum) {
-          setPaymentState({ status: "error", message: "No injected wallet found. Install MetaMask or use World App." })
-          return
-        }
-        const provider = new ethers.BrowserProvider((window as any).ethereum)
-        await provider.send("eth_requestAccounts", [])
-        const signer = await provider.getSigner()
-        // If a CHAIN_ID is configured, warn if user is on a different network
-        try {
-          const network = await provider.getNetwork()
-          const expected = (await import("@/lib/config")).CHAIN_ID
-          if (expected && Number(network.chainId) !== expected) {
-            setPaymentState({ status: "error", message: `Please switch your wallet network to chain ${expected}` })
-            return
-          }
-        } catch (e) {
-          // ignore network check failures
-        }
-
-        // Create booking record in our DB first (same as MiniKit flow)
-        setPaymentState({ status: "processing", message: "Creating secure escrow..." })
-        
-        // Get profile UUID for wallet flow too
-        const profileRes = await fetch('/api/profiles/get-by-wallet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ walletAddress: session.user.walletAddress })
-        })
-
-        const profileData = await profileRes.json()
-        if (!profileRes.ok || !profileData.success) {
-          setPaymentState({
-            status: "error",
-            message: `Failed to get user profile: ${profileData.error}`
-          })
-          return
-        }
-
-        const profileId = profileData.data.id
-        addLog("success", "Profile UUID retrieved for wallet flow", { 
-          profileId,
-          profileIdType: typeof profileId,
-          isUUID: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)
-        })
-        
-        const createRes = await bookingService.createBooking({
-          client_id: profileId, // Use profile UUID instead of wallet address
-          person_id: booking.sellerId,
-          session_notes: booking.sessionNotes,
-          hourly_rate: booking.hourlyRate,
-          currency: selectedCurrency,
-          total_amount: booking.hourlyRate,
-          ...(booking.scheduledDate ? { scheduled_date: booking.scheduledDate } : {}),
-          ...(booking.calendlyEventId ? { calendly_event_id: booking.calendlyEventId } : {}),
-        })
-        if (!createRes.success || !createRes.data) {
-          const msg = !createRes.success ? (createRes as any).error?.message : "Failed to create booking"
-          setPaymentState({ status: "error", message: msg || "Failed to create booking" })
-          return
-        }
-        const createdBooking = createRes.data
-
-        setPaymentState({ status: "processing", message: "Approving token and sending transaction..." })
-        const tokenAddress = selectedCurrency === "USDC" ? USDC_TOKEN_ADDRESS : WLD_TOKEN_ADDRESS
-        if (!sellerAddress) {
-          setPaymentState({ status: "error", message: "Missing seller wallet address" })
-          return
-        }
-        if (!tokenAddress) {
-          setPaymentState({ status: "error", message: selectedCurrency === "WLD" ? "WLD token not configured" : "Token address missing" })
-          return
-        }
-        // Fix floating point precision issues by rounding to 2 decimal places
-        const amountWithFee = Math.round((booking.hourlyRate * 1.025) * 100) / 100
-        addLog("info", "Wallet flow amount calculation", {
-          hourlyRate: booking.hourlyRate,
-          rawCalculation: booking.hourlyRate * 1.025,
-          amountWithFee,
-          amountWithFeeString: amountWithFee.toString()
-        })
-        // Simplified payment flow - send directly to seller (for preview purposes)
-        addLog("info", "Sending direct payment to seller via wallet (simplified flow)", {
-          sellerAddress,
-          amountWithFee,
-          tokenAddress
-        })
-        
-        // Create simple token transfer instead of escrow
-        const tokenContract = new ethers.Contract(
-          tokenAddress,
-          ["function transfer(address to, uint256 amount) external returns (bool)"],
-          signer
-        )
-        
-        const amount = (ethers as any).parseUnits
-          ? (ethers as any).parseUnits(amountWithFee.toString(), tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18)
-          : ethers.parseUnits(amountWithFee.toString(), tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18)
-        
-        const tx = await tokenContract.transfer(sellerAddress, amount)
-        const receipt = await tx.wait()
-        
-        addLog("success", "Direct transfer completed", { 
-          transactionHash: receipt.transactionHash,
-          sellerAddress,
-          amount: amountWithFee
-        })
-
-        setPaymentState({ status: "success", message: "Payment secured in escrow", bookingId: createdBooking.id })
-        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", profileId)
-        localStorage.removeItem("pendingBooking")
-        setTimeout(() => router.push(`/booking-confirmation/${createdBooking.id}`), 2000)
-        return
-      } catch (err) {
-        console.error("Wallet flow error:", err)
-        setPaymentState({ status: "error", message: err instanceof Error ? err.message : String(err) })
-        return
-      }
+      addLog("error", "MiniKit not available", { miniKitAvailable })
+      setPaymentState({ 
+        status: "error", 
+        message: "World App MiniKit not available. Please open this app in World App to make payments." 
+      })
+      return
     }
 
     setPaymentState({ status: "processing", message: "Initiating payment..." })
@@ -376,7 +261,7 @@ export default function PaymentPage() {
       const createdBooking = createRes.data
       addLog("success", "Booking created in database", { bookingId: createdBooking.id })
 
-      // Step 2: Initiate MiniKit contract call using Permit2 (no direct approvals)
+      // Check for required addresses
       if (!sellerAddress) {
         addLog("error", "Missing seller wallet address")
         setPaymentState({ status: "error", message: "Missing seller wallet address" })
@@ -390,177 +275,118 @@ export default function PaymentPage() {
       }
 
       addLog("info", "Token configuration", { selectedCurrency, tokenAddress })
-      setPaymentState({ status: "processing", message: "Preparing secure escrow..." })
+      setPaymentState({ status: "processing", message: "Preparing payment..." })
 
-      const decimals = tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18
       // Fix floating point precision issues by rounding to 2 decimal places
       const amountWithFee = Math.round((booking.hourlyRate * 1.025) * 100) / 100
-      const amount = (ethers as any).parseUnits
-        ? (ethers as any).parseUnits(amountWithFee.toString(), decimals)
-        : ethers.parseUnits(amountWithFee.toString(), decimals)
-      const amountStr = amount.toString()
-      const scheduledTimeSec = Math.floor((booking.scheduledDate ? new Date(booking.scheduledDate).getTime() : Date.now()) / 1000)
 
       addLog("info", "Amount calculation", {
         hourlyRate: booking.hourlyRate,
         rawCalculation: booking.hourlyRate * 1.025,
         amountWithFee,
-        amountWithFeeString: amountWithFee.toString(),
-        decimals,
-        amountStr,
-        scheduledTimeSec
+        amountWithFeeString: amountWithFee.toString()
       })
 
-      // Resolve buyer (wallet) address from MiniKit
-      addLog("info", "Getting user info from MiniKit")
-      let buyerAddress: string | undefined
-      
-      try {
-        const userInfo = await MiniKit.getUserInfo()
-        addLog("info", "MiniKit user info received", { userInfo })
+      addLog("success", "Booking created", { bookingId: createdBooking.id })
+
+      // Try MiniKit Pay command first
+      if (miniKitAvailable) {
+        addLog("info", "Using MiniKit Pay command for payment", { miniKitAvailable })
         
-        buyerAddress = (userInfo as any)?.walletAddress as string | undefined
-        
-        // Fallback to session wallet address if MiniKit doesn't provide it
-        if (!buyerAddress && session?.user?.walletAddress) {
-          buyerAddress = session.user.walletAddress
-          addLog("warning", "Using wallet address from session as fallback", { 
-            buyerAddress,
-            source: "session"
+        try {
+          // Initiate payment to get reference ID
+          const initiateRes = await fetch('/api/initiate-payment', {
+            method: 'POST',
           })
-        }
-        
-        if (!buyerAddress) {
-          addLog("error", "Missing buyer wallet address from both MiniKit and session", { 
-            userInfo,
-            availableKeys: Object.keys(userInfo || {}),
-            userInfoType: typeof userInfo,
-            sessionWalletAddress: session?.user?.walletAddress
+          const { id: referenceId } = await initiateRes.json()
+          
+          addLog("info", "Payment reference created", { referenceId })
+
+          // Determine token symbol and amount
+          const tokenSymbol = selectedCurrency === "WLD" ? Tokens.WLD : Tokens.USDC
+          const tokenAmount = tokenToDecimals(amountWithFee, tokenSymbol).toString()
+
+          addLog("info", "Token details", { 
+            tokenSymbol, 
+            tokenAmount, 
+            amountWithFee,
+            decimals: selectedCurrency === "WLD" ? 18 : 6
           })
-          setPaymentState({ 
-            status: "error", 
-            message: "Missing buyer wallet address. Please make sure you're logged in to World App." 
+
+          // Create Pay command payload
+          const payload: PayCommandInput = {
+            reference: referenceId,
+            to: sellerAddress,
+            tokens: [
+              {
+                symbol: tokenSymbol,
+                token_amount: tokenAmount,
+              }
+            ],
+            description: `Payment for ${booking.sessionNotes || 'time booking'} - ${amountWithFee} ${selectedCurrency}`,
+          }
+
+          addLog("info", "Pay command payload", payload)
+
+          setPaymentState({ status: "processing", message: "Confirm payment in World App..." })
+
+          // Send Pay command
+          const { finalPayload } = await MiniKit.commandsAsync.pay(payload)
+
+          addLog("info", "Pay command response received", { finalPayload })
+          
+          if (finalPayload.status === 'success') {
+            addLog("success", "Pay command successful", { 
+              transactionId: finalPayload.transaction_id,
+              bookingId: createdBooking.id 
+            })
+
+            // Confirm payment in backend
+            const confirmRes = await fetch('/api/confirm-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ payload: finalPayload }),
+            })
+            const confirmResult = await confirmRes.json()
+
+            if (confirmResult.success) {
+              addLog("success", "Payment confirmed in backend", { confirmResult })
+              setPaymentState({
+                status: "success",
+                message: "Payment successful! Booking confirmed.",
+                transactionHash: finalPayload.transaction_id,
+                bookingId: createdBooking.id,
+              })
+              await bookingService.updateBookingStatus(createdBooking.id, "confirmed", profileId)
+              localStorage.removeItem("pendingBooking")
+              setTimeout(() => {
+                router.push(`/booking-confirmation/${createdBooking.id}`)
+              }, 3000)
+            } else {
+              addLog("error", "Payment confirmation failed", { confirmResult })
+              setPaymentState({ status: "error", message: "Payment confirmation failed" })
+              return
+            }
+          } else {
+            addLog("error", "Pay command failed", { finalPayload })
+            const errMsg = (finalPayload as any)?.error || "Payment failed"
+            setPaymentState({ status: "error", message: `Payment failed: ${String(errMsg)}` })
+            return
+          }
+        } catch (error) {
+          addLog("error", "Pay command error", { error: error instanceof Error ? error.message : String(error) })
+          setPaymentState({
+            status: "error",
+            message: error instanceof Error ? error.message : "Payment failed. Please try again.",
           })
           return
         }
-        addLog("success", "Buyer wallet address resolved", { buyerAddress })
-      } catch (error) {
-        addLog("error", "Failed to get user info from MiniKit", { 
-          error: error instanceof Error ? error.message : String(error) 
-        })
+      } else {
+        addLog("error", "MiniKit not available", { miniKitAvailable })
         setPaymentState({ 
           status: "error", 
-          message: "Failed to get user information from World App. Please try again." 
+          message: "World App MiniKit not available. Please open this app in World App to make payments." 
         })
-        return
-      }
-
-      // Build Permit2 params (signature will be filled by MiniKit backend)
-      const permit2 = [
-        {
-          permitted: {
-            token: tokenAddress,
-            amount: amountStr,
-          },
-          spender: ESCROW_CONTRACT_ADDRESS,
-          nonce: Date.now().toString(),
-          deadline: Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(), // 30 min
-        },
-      ] as any
-
-      addLog("info", "Permit2 parameters prepared", { permit2 })
-
-      setPaymentState({ status: "processing", message: "Confirm escrow in World App..." })
-
-      const transactionParams = {
-        permit2,
-        buyerAddress,
-        sellerAddress,
-        amountStr,
-        scheduledTimeSec,
-        sessionNotes: booking.sessionNotes || ""
-      }
-
-      addLog("info", "Transaction parameters", transactionParams)
-
-      const txPayload = {
-        transaction: [
-          {
-            address: ESCROW_CONTRACT_ADDRESS,
-            abi: ESCROW_ABI as unknown as any,
-            functionName: "createBookingWithPermit2" as any,
-            args: [
-              {
-                permitted: {
-                  token: tokenAddress,
-                  amount: amountStr,
-                },
-                nonce: permit2[0].nonce,
-                deadline: permit2[0].deadline,
-              },
-              {
-                to: ESCROW_CONTRACT_ADDRESS,
-                requestedAmount: amountStr,
-              },
-              buyerAddress, // _buyer
-              sellerAddress,
-              scheduledTimeSec,
-              booking.sessionNotes || "",
-              "PERMIT2_SIGNATURE_PLACEHOLDER_0",
-            ] as any,
-          },
-        ],
-        permit2: permit2,
-      }
-
-      // Simplified payment flow - send directly to seller (for preview purposes)
-      addLog("info", "Sending direct payment to seller (simplified flow)", { 
-        sellerAddress,
-        amountStr,
-        tokenAddress
-      })
-      
-      // Create a simple transfer transaction instead of escrow
-      const simpleTxPayload = {
-        transaction: [
-          {
-            address: tokenAddress, // Token contract address
-            abi: [
-              "function transfer(address to, uint256 amount) external returns (bool)"
-            ],
-            functionName: "transfer",
-            args: [sellerAddress, amountStr]
-          }
-        ]
-      }
-      
-      addLog("info", "Sending simplified transaction to MiniKit", { simpleTxPayload })
-      const txResponse = await miniKit.sendTransaction(simpleTxPayload)
-
-      addLog("info", "Transaction response received", { txResponse })
-      
-      const final = (txResponse as any)?.finalPayload
-      if (final && final.status === 'success') {
-        addLog("success", "Transaction successful", { 
-          transactionId: final.transaction_id,
-          bookingId: createdBooking.id 
-        })
-        setPaymentState({
-          status: "success",
-          message: "Payment secured in escrow! Booking confirmed.",
-          transactionHash: final.transaction_id,
-          bookingId: createdBooking.id,
-        })
-        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", profileId)
-        localStorage.removeItem("pendingBooking")
-        setTimeout(() => {
-          router.push(`/booking-confirmation/${createdBooking.id}`)
-        }, 3000)
-      } else {
-        addLog("error", "Transaction failed", { txResponse, final })
-        const errMsg = (final && (final as any).error_code) || (final && (final as any).error) || (txResponse as any)?.error || "Transaction failed"
-        setPaymentState({ status: "error", message: `Transaction failed: ${String(errMsg)}` })
-        return
       }
     } catch (error) {
       addLog("error", "Payment flow error", { error: error instanceof Error ? error.message : String(error) })

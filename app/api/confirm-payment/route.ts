@@ -1,0 +1,49 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { MiniAppPaymentSuccessPayload } from '@worldcoin/minikit-js'
+
+interface IRequestPayload {
+  payload: MiniAppPaymentSuccessPayload
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { payload } = (await req.json()) as IRequestPayload
+
+    // IMPORTANT: Here we should fetch the reference you created in /initiate-payment to ensure the transaction we are verifying is the same one we initiated
+    // For now, we'll just return success since we're in preview mode
+    const reference = payload.reference
+
+    // 1. Check that the transaction we received from the mini app is the same one we sent
+    if (payload.reference) {
+      // In preview mode, we'll skip the actual verification and just return success
+      // In production, you would verify with the Developer Portal API:
+      /*
+      const response = await fetch(
+        `https://developer.worldcoin.org/api/v2/minikit/transaction/${payload.transaction_id}?app_id=${process.env.APP_ID}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${process.env.DEV_PORTAL_API_KEY}`,
+          },
+        }
+      )
+      const transaction = await response.json()
+
+      // 2. Here we optimistically confirm the transaction.
+      // Otherwise, you can poll until the status == mined
+      if (transaction.reference == reference && transaction.status != 'failed') {
+        return NextResponse.json({ success: true })
+      } else {
+        return NextResponse.json({ success: false })
+      }
+      */
+      
+      return NextResponse.json({ success: true, reference })
+    } else {
+      return NextResponse.json({ success: false, error: 'Invalid reference' })
+    }
+  } catch (error) {
+    console.error('Error confirming payment:', error)
+    return NextResponse.json({ success: false, error: 'Failed to confirm payment' }, { status: 500 })
+  }
+}
