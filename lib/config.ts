@@ -12,7 +12,7 @@ export const WLD_TOKEN_ADDRESS: string =
   (process.env.NEXT_PUBLIC_WLD_TOKEN_ADDRESS as string) || "";
 
 export const NEXT_PUBLIC_RPC_URL: string =
-  (process.env.NEXT_PUBLIC_RPC_URL as string) || "";
+  (process.env.NEXT_PUBLIC_RPC_URL as string) || "worldchain-sepolia.g.alchemy.com/public";
 
 // Optional expected chain id (useful for dev/testnets). Set as a decimal string in env.
 export const CHAIN_ID: number | undefined = process.env.NEXT_PUBLIC_CHAIN_ID

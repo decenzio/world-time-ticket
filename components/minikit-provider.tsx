@@ -14,9 +14,22 @@ export function MiniKitProvider({ children }: MiniKitProviderProps) {
     const installMiniKit = async () => {
       try {
         console.log("Installing MiniKit...")
-        await MiniKit.install()
-        console.log("MiniKit installed successfully")
-        setIsInstalled(true)
+        const appId = process.env.NEXT_PUBLIC_MINIKIT_APP_ID as string | undefined
+        
+        if (!appId) {
+          console.warn("NEXT_PUBLIC_MINIKIT_APP_ID is not set. Please configure it in your environment variables.")
+          setIsInstalled(false)
+          return
+        }
+        
+        const res = MiniKit.install(appId)
+        if (res?.success) {
+          console.log("MiniKit installed successfully", { appId: 'provided' })
+          setIsInstalled(true)
+        } else {
+          console.warn("MiniKit install reported failure", res)
+          setIsInstalled(false)
+        }
         
         // Verify installation
         const isAvailable = MiniKit.isInstalled()

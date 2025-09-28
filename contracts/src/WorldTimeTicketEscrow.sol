@@ -2,7 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 //finish the contract
@@ -15,6 +16,31 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev Escrow contract for WorldTimeTicket marketplace bookings
  * Handles deposits, releases, refunds, and disputes for time slot bookings
  */
+interface ISignatureTransfer {
+    struct TokenPermissions {
+        address token;
+        uint256 amount;
+    }
+
+    struct PermitTransferFrom {
+        TokenPermissions permitted;
+        uint256 nonce;
+        uint256 deadline;
+    }
+
+    struct SignatureTransferDetails {
+        address to;
+        uint256 requestedAmount;
+    }
+
+    function permitTransferFrom(
+        PermitTransferFrom calldata permit,
+        SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes calldata signature
+    ) external;
+}
+
 contract WorldTimeTicketEscrow is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
     enum BookingStatus {
@@ -84,8 +110,15 @@ contract WorldTimeTicketEscrow is ReentrancyGuard, Ownable {
         bool isBuyer
     );
 
-    constructor(address _owner) {
+    // Uniswap Permit2 contract (immutable)
+    ISignatureTransfer public immutable permit2;
+
+    constructor(address _owner, address _permit2, address[] memory _initialSupportedTokens) {
         _transferOwnership(_owner);
+        permit2 = ISignatureTransfer(_permit2);
+        for (uint256 i = 0; i < _initialSupportedTokens.length; i++) {
+            supportedTokens[_initialSupportedTokens[i]] = true;
+        }
     }
 
     /**
@@ -168,6 +201,71 @@ contract WorldTimeTicketEscrow is ReentrancyGuard, Ownable {
         userBookings[_seller].push(bookingId);
 
         emit BookingCreated(bookingId, msg.sender, _seller, _amount, _token);
+
+        return bookingId;
+    }
+
+    /**
+     * @dev Create a new booking using Permit2 signature-based transfer.
+     * Funds are atomically transferred from `buyer` to this contract via Permit2,
+     * and the booking is recorded in the same transaction.
+     */
+    function createBookingWithPermit2(
+        ISignatureTransfer.PermitTransferFrom calldata _permit,
+        ISignatureTransfer.SignatureTransferDetails calldata _details,
+        address _buyer,
+        address _seller,
+        uint256 _scheduledTime,
+        string calldata _sessionNotes,
+        bytes calldata _signature
+    ) external nonReentrant returns (bytes32) {
+        require(_seller != address(0), "Invalid seller address");
+        require(_seller != _buyer, "Cannot book yourself");
+        require(_details.to == address(this), "Invalid recipient");
+        require(_scheduledTime > block.timestamp, "Scheduled time must be in future");
+
+        address token = _permit.permitted.token;
+        uint256 amount = _permit.permitted.amount;
+        require(supportedTokens[token], "Token not supported");
+        require(amount > 0, "Amount must be greater than 0");
+        require(_details.requestedAmount == amount, "Amount mismatch");
+
+        // Execute Permit2 transfer from buyer to this escrow
+        permit2.permitTransferFrom(_permit, _details, _buyer, _signature);
+
+        // Generate unique booking ID
+        bytes32 bookingId = keccak256(
+            abi.encodePacked(
+                _buyer,
+                _seller,
+                amount,
+                _scheduledTime,
+                block.timestamp,
+                block.number
+            )
+        );
+
+        require(bookings[bookingId].buyer == address(0), "Booking already exists");
+
+        // Create booking
+        bookings[bookingId] = Booking({
+            buyer: _buyer,
+            seller: _seller,
+            token: token,
+            amount: amount,
+            createdAt: block.timestamp,
+            scheduledTime: _scheduledTime,
+            status: BookingStatus.Deposited,
+            buyerFeedback: false,
+            sellerFeedback: false,
+            sessionNotes: _sessionNotes
+        });
+
+        // Track user bookings
+        userBookings[_buyer].push(bookingId);
+        userBookings[_seller].push(bookingId);
+
+        emit BookingCreated(bookingId, _buyer, _seller, amount, token);
 
         return bookingId;
     }

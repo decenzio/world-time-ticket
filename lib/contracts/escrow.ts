@@ -4,6 +4,7 @@ import { ESCROW_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS } from "@/lib/config";
 // Contract ABI (simplified for key functions)
 export const ESCROW_ABI = [
   "function createBooking(address _seller, address _token, uint256 _amount, uint256 _scheduledTime, string calldata _sessionNotes) external returns (bytes32)",
+  "function createBookingWithPermit2(((address token,uint256 amount) permitted,uint256 nonce,uint256 deadline) _permit,(address to,uint256 requestedAmount) _details,address _buyer,address _seller,uint256 _scheduledTime,string _sessionNotes,bytes _signature) external returns (bytes32)",
   "function submitFeedback(bytes32 _bookingId) external",
   "function refundFunds(bytes32 _bookingId) external",
   "function initiateDispute(bytes32 _bookingId) external",
@@ -15,6 +16,74 @@ export const ESCROW_ABI = [
   "event FundsRefunded(bytes32 indexed bookingId, address indexed buyer, uint256 amount)",
   "event BookingDisputed(bytes32 indexed bookingId, address indexed initiator)",
   "event FeedbackSubmitted(bytes32 indexed bookingId, address indexed user, bool isBuyer)",
+];
+
+// Permit2 ABI for signature transfers
+export const PERMIT2_ABI = [
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "token",
+                "type": "address"
+              },
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct ISignatureTransfer.TokenPermissions",
+            "name": "permitted",
+            "type": "tuple"
+          },
+          {
+            "internalType": "uint256",
+            "name": "nonce",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "deadline",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ISignatureTransfer.PermitTransferFrom",
+        "name": "permitTransferFrom",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "to",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "requestedAmount",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct ISignatureTransfer.SignatureTransferDetails",
+        "name": "transferDetails",
+        "type": "tuple"
+      },
+      {
+        "internalType": "bytes",
+        "name": "signature",
+        "type": "bytes"
+      }
+    ],
+    "name": "permitTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
 ];
 
 // Contract addresses (testnet)

@@ -91,7 +91,8 @@ export const findAllPeople = async (
         profiles:user_id (
           full_name,
           avatar_url,
-          bio
+          bio,
+          wallet_address
         )
       `);
 
@@ -153,7 +154,8 @@ export const findPersonById = async (
         profiles:user_id (
           full_name,
           avatar_url,
-          bio
+          bio,
+          wallet_address
         )
       `
       )
@@ -405,7 +407,8 @@ export const findPersonByUserId = async (
         profiles:user_id (
           full_name,
           avatar_url,
-          bio
+          bio,
+          wallet_address
         )
       `
       )

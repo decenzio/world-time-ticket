@@ -2,6 +2,7 @@ import {
   MiniKit,
   PayCommandInput,
   VerifyCommandInput,
+  SendTransactionInput,
 } from "@worldcoin/minikit-js";
 
 export interface PaymentPayload {
@@ -54,7 +55,7 @@ export class MiniKitService {
       console.log("MiniKit: Total attempts:", attempts);
 
       if (!MiniKit.isInstalled()) {
-        console.warn("MiniKit not available - running outside World App");
+        console.warn("MiniKit not available - running outside World App or not properly configured");
         return false;
       }
 
@@ -171,6 +172,28 @@ export class MiniKitService {
       return {
         success: false,
         error: error instanceof Error ? error.message : "Payment failed",
+      };
+    }
+  }
+
+  async sendTransaction(payload: SendTransactionInput): Promise<any> {
+    if (!this.isAvailable()) {
+      throw new Error("MiniKit not available");
+    }
+
+    try {
+      console.log("Sending transaction with payload:", payload);
+      const result = await MiniKit.commandsAsync.sendTransaction(payload);
+      console.log("Transaction result:", result);
+      return {
+        success: true,
+        ...result,
+      };
+    } catch (error) {
+      console.error("Send transaction failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Send transaction failed",
       };
     }
   }
