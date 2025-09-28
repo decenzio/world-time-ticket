@@ -13,6 +13,9 @@ import { ESCROW_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS, WLD_TOKEN_ADDRESS } from "
 import { ESCROW_ABI, PERMIT2_ABI, createBookingWithApproval } from "@/lib/contracts/escrow"
 import { ethers } from "ethers"
 import { MiniKit } from "@worldcoin/minikit-js"
+import { PaymentDebug } from "@/components/payment-debug"
+import { useDebugLogger } from "@/lib/use-debug-logger"
+import { DebugTestButton } from "@/components/debug-test-button"
 
 interface BookingDetails {
   sellerId: string
@@ -34,6 +37,7 @@ interface PaymentState {
 export default function PaymentPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { logs, isVisible, addLog, clearLogs, toggleVisibility } = useDebugLogger()
 
   const [booking, setBooking] = useState<BookingDetails | null>(null)
   const [selectedCurrency, setSelectedCurrency] = useState<"WLD" | "USDC">("USDC")
@@ -42,67 +46,95 @@ export default function PaymentPage() {
   const [sellerAddress, setSellerAddress] = useState<string | null>(null)
 
   useEffect(() => {
+    addLog("info", "Payment page initialized")
+    
     // Load booking details from localStorage
     const savedBooking = localStorage.getItem("pendingBooking")
     if (savedBooking) {
       const bookingData = JSON.parse(savedBooking)
       setBooking(bookingData)
       setSelectedCurrency(bookingData.currency || "USDC")
+      addLog("success", "Booking data loaded from localStorage", { bookingData })
     } else {
-      // Redirect if no booking data
+      addLog("warning", "No booking data found, redirecting to marketplace")
       router.push("/marketplace")
     }
 
     // Initialize MiniKit
     const initMiniKit = async () => {
       try {
+        addLog("info", "Initializing MiniKit...")
         const available = await miniKit.initialize()
         setMiniKitAvailable(available)
+        if (available) {
+          addLog("success", "MiniKit initialized successfully")
+        } else {
+          addLog("warning", "MiniKit not available - running outside World App")
+        }
       } catch (error) {
-        console.error("Failed to initialize MiniKit:", error)
+        addLog("error", "Failed to initialize MiniKit", { error: error instanceof Error ? error.message : String(error) })
         setMiniKitAvailable(false)
       }
     }
     
     // Properly handle the async call
     initMiniKit().catch((error) => {
-      console.error("Failed to initialize MiniKit:", error)
+      addLog("error", "MiniKit initialization failed", { error: error instanceof Error ? error.message : String(error) })
       setMiniKitAvailable(false)
     })
-  }, [router])
+  }, [router, addLog])
 
   // Resolve seller's wallet address for onchain calls
   useEffect(() => {
     const loadSellerAddress = async () => {
       if (!booking?.sellerId) return
       try {
+        addLog("info", "Loading seller wallet address", { sellerId: booking.sellerId })
         const res = await peopleService.getPersonById(booking.sellerId)
         if (res.success && (res.data as any)?.profiles?.wallet_address) {
-          setSellerAddress(((res.data as any).profiles.wallet_address as string).toLowerCase())
+          const walletAddress = ((res.data as any).profiles.wallet_address as string).toLowerCase()
+          setSellerAddress(walletAddress)
+          addLog("success", "Seller wallet address loaded", { walletAddress })
+        } else {
+          addLog("warning", "No wallet address found for seller", { sellerId: booking.sellerId })
         }
       } catch (e) {
-        // non-blocking; handled later if missing
+        addLog("error", "Failed to load seller wallet address", { error: e instanceof Error ? e.message : String(e) })
       }
     }
-    loadSellerAddress().catch(() => {})
-  }, [booking?.sellerId])
+    loadSellerAddress().catch((error) => {
+      addLog("error", "Seller address loading failed", { error: error instanceof Error ? error.message : String(error) })
+    })
+  }, [booking?.sellerId, addLog])
 
   const handlePayment = async () => {
+    addLog("info", "Payment button clicked", { 
+      booking: booking ? { sellerId: booking.sellerId, hourlyRate: booking.hourlyRate, currency: selectedCurrency } : null,
+      user: user ? { id: user.id } : null,
+      miniKitAvailable 
+    })
+
     if (!booking || !user) {
+      addLog("error", "Missing booking or user data", { booking: !!booking, user: !!user })
       alert("Missing booking or user")
       return
     }
 
     // If MiniKit wasn't ready yet, try initializing again on click
     if (!miniKitAvailable) {
+      addLog("warning", "MiniKit not available, attempting to initialize...")
       try {
         const availableNow = await miniKit.initialize()
         setMiniKitAvailable(availableNow)
         if (!availableNow) {
+          addLog("error", "MiniKit initialization failed on retry")
           setPaymentState({ status: "error", message: "World App MiniKit not available. Please open in World App and try again." })
           return
+        } else {
+          addLog("success", "MiniKit initialized successfully on retry")
         }
       } catch (e) {
+        addLog("error", "Failed to initialize World App on retry", { error: e instanceof Error ? e.message : String(e) })
         setPaymentState({ status: "error", message: "Failed to initialize World App. Please try again." })
         return
       }
@@ -182,10 +214,17 @@ export default function PaymentPage() {
     }
 
     setPaymentState({ status: "processing", message: "Initiating payment..." })
+    addLog("info", "Starting MiniKit payment flow")
 
     try {
       // Step 1: Create booking record in Supabase and get booking ID
       setPaymentState({ status: "processing", message: "Creating secure escrow..." })
+      addLog("info", "Creating booking record in database", {
+        client_id: user.id,
+        person_id: booking.sellerId,
+        hourly_rate: booking.hourlyRate,
+        currency: selectedCurrency
+      })
 
       const createRes = await bookingService.createBooking({
         client_id: user.id,
@@ -197,7 +236,9 @@ export default function PaymentPage() {
         ...(booking.scheduledDate ? { scheduled_date: booking.scheduledDate } : {}),
         ...(booking.calendlyEventId ? { calendly_event_id: booking.calendlyEventId } : {}),
       })
+      
       if (!createRes.success) {
+        addLog("error", "Failed to create booking in database", { error: createRes.error })
         setPaymentState({
           status: "error",
           message: createRes.error?.message || "Failed to create booking",
@@ -205,6 +246,7 @@ export default function PaymentPage() {
         return
       }
       if (!createRes.data) {
+        addLog("error", "No booking data returned from database")
         setPaymentState({
           status: "error",
           message: "Failed to create booking - no data returned",
@@ -212,18 +254,22 @@ export default function PaymentPage() {
         return
       }
       const createdBooking = createRes.data
+      addLog("success", "Booking created in database", { bookingId: createdBooking.id })
 
       // Step 2: Initiate MiniKit contract call using Permit2 (no direct approvals)
       if (!sellerAddress) {
+        addLog("error", "Missing seller wallet address")
         setPaymentState({ status: "error", message: "Missing seller wallet address" })
         return
       }
       const tokenAddress = selectedCurrency === "USDC" ? USDC_TOKEN_ADDRESS : WLD_TOKEN_ADDRESS
       if (!tokenAddress) {
+        addLog("error", "Token address not configured", { selectedCurrency, tokenAddress })
         setPaymentState({ status: "error", message: selectedCurrency === "WLD" ? "WLD token not configured" : "Token address missing" })
         return
       }
 
+      addLog("info", "Token configuration", { selectedCurrency, tokenAddress })
       setPaymentState({ status: "processing", message: "Preparing Permit2 transfer..." })
 
       const decimals = tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18
@@ -234,13 +280,24 @@ export default function PaymentPage() {
       const amountStr = amount.toString()
       const scheduledTimeSec = Math.floor((booking.scheduledDate ? new Date(booking.scheduledDate).getTime() : Date.now()) / 1000)
 
+      addLog("info", "Amount calculation", {
+        hourlyRate: booking.hourlyRate,
+        amountWithFee,
+        decimals,
+        amountStr,
+        scheduledTimeSec
+      })
+
       // Resolve buyer (wallet) address from MiniKit
+      addLog("info", "Getting user info from MiniKit")
       const userInfo = await MiniKit.getUserInfo()
       const buyerAddress = (userInfo as any)?.walletAddress as string | undefined
       if (!buyerAddress) {
+        addLog("error", "Missing buyer wallet address from MiniKit", { userInfo })
         setPaymentState({ status: "error", message: "Missing buyer wallet address" })
         return
       }
+      addLog("success", "Buyer wallet address resolved", { buyerAddress })
 
       // Build Permit2 params (signature will be filled by MiniKit backend)
       const permit2 = [
@@ -255,18 +312,22 @@ export default function PaymentPage() {
         },
       ] as any
 
+      addLog("info", "Permit2 parameters prepared", { permit2 })
+
       setPaymentState({ status: "processing", message: "Confirm in World App..." })
 
-      console.log("Sending transaction with params:", {
+      const transactionParams = {
         permit2,
         buyerAddress,
         sellerAddress,
         amountStr,
         scheduledTimeSec,
         sessionNotes: booking.sessionNotes || ""
-      })
+      }
 
-      const txResponse = await miniKit.sendTransaction({
+      addLog("info", "Transaction parameters", transactionParams)
+
+      const txPayload = {
         transaction: [
           {
             address: ESCROW_CONTRACT_ADDRESS,
@@ -294,12 +355,19 @@ export default function PaymentPage() {
           },
         ],
         permit2: permit2,
-      })
+      }
 
-      console.log("Transaction response:", txResponse)
+      addLog("info", "Sending transaction to MiniKit", { txPayload })
+      const txResponse = await miniKit.sendTransaction(txPayload)
+
+      addLog("info", "Transaction response received", { txResponse })
       
       const final = (txResponse as any)?.finalPayload
       if (final && final.status === 'success') {
+        addLog("success", "Transaction successful", { 
+          transactionId: final.transaction_id,
+          bookingId: createdBooking.id 
+        })
         setPaymentState({
           status: "success",
           message: "Payment submitted! Booking confirmed.",
@@ -312,13 +380,13 @@ export default function PaymentPage() {
           router.push(`/booking-confirmation/${createdBooking.id}`)
         }, 3000)
       } else {
-        console.error("Transaction failed:", { txResponse, final })
+        addLog("error", "Transaction failed", { txResponse, final })
         const errMsg = (final && (final as any).error_code) || (final && (final as any).error) || (txResponse as any)?.error || "Transaction failed"
         setPaymentState({ status: "error", message: `Transaction failed: ${String(errMsg)}` })
         return
       }
     } catch (error) {
-      console.error("Payment error:", error)
+      addLog("error", "Payment flow error", { error: error instanceof Error ? error.message : String(error) })
       setPaymentState({
         status: "error",
         message: error instanceof Error ? error.message : "Payment failed. Please try again.",
@@ -537,6 +605,20 @@ export default function PaymentPage() {
             <Shield className="w-4 h-4" />
             <span>Secured by World App & Smart Contract Escrow</span>
           </div>
+        </div>
+
+        {/* Debug Panel */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Debug Information</h3>
+            <DebugTestButton />
+          </div>
+          <PaymentDebug
+            logs={logs}
+            onClearLogs={clearLogs}
+            isVisible={isVisible}
+            onToggle={toggleVisibility}
+          />
         </div>
       </div>
     </div>
