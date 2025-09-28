@@ -10,7 +10,9 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {AlertCircle, ArrowLeft, CheckCircle, Clock, DollarSign, Shield} from "lucide-react"
 import {Tokens} from "@worldcoin/minikit-js"
-import { ESCROW_CONTRACT_ADDRESS } from "@/lib/config"
+import { ESCROW_CONTRACT_ADDRESS, USDC_TOKEN_ADDRESS } from "@/lib/config"
+import { createBookingWithApproval } from "@/lib/contracts/escrow"
+import { ethers } from "ethers"
 
 interface BookingDetails {
   sellerId: string
@@ -69,9 +71,74 @@ export default function PaymentPage() {
   }, [router])
 
   const handlePayment = async () => {
-    if (!booking || !miniKitAvailable || !user) {
-      alert("Please open this app in World App")
+    if (!booking || !user) {
+      alert("Missing booking or user")
       return
+    }
+
+    if (!miniKitAvailable) {
+      // Fallback to in-page wallet flow
+      setPaymentState({ status: "processing", message: "Connecting wallet..." })
+      try {
+        if (!(window as any).ethereum) {
+          setPaymentState({ status: "error", message: "No injected wallet found. Install MetaMask or use World App." })
+          return
+        }
+        const provider = new ethers.BrowserProvider((window as any).ethereum)
+        await provider.send("eth_requestAccounts", [])
+        const signer = await provider.getSigner()
+        // If a CHAIN_ID is configured, warn if user is on a different network
+        try {
+          const network = await provider.getNetwork()
+          const expected = (await import("@/lib/config")).CHAIN_ID
+          if (expected && Number(network.chainId) !== expected) {
+            setPaymentState({ status: "error", message: `Please switch your wallet network to chain ${expected}` })
+            return
+          }
+        } catch (e) {
+          // ignore network check failures
+        }
+
+        // Create booking record in our DB first (same as MiniKit flow)
+        setPaymentState({ status: "processing", message: "Creating secure escrow..." })
+        const createRes = await bookingService.createBooking({
+          client_id: user.id,
+          person_id: booking.sellerId,
+          session_notes: booking.sessionNotes,
+          hourly_rate: booking.hourlyRate,
+          currency: booking.currency,
+          total_amount: booking.hourlyRate,
+          ...(booking.scheduledDate ? { scheduled_date: booking.scheduledDate } : {}),
+          ...(booking.calendlyEventId ? { calendly_event_id: booking.calendlyEventId } : {}),
+        })
+        if (!createRes.success || !createRes.data) {
+          const msg = !createRes.success ? (createRes as any).error?.message : "Failed to create booking"
+          setPaymentState({ status: "error", message: msg || "Failed to create booking" })
+          return
+        }
+        const createdBooking = createRes.data
+
+        setPaymentState({ status: "processing", message: "Approving token and sending transaction..." })
+        const tokenAddress = booking.currency === "USDC" ? USDC_TOKEN_ADDRESS : ""
+        const bookingId = await createBookingWithApproval(
+          signer,
+          booking.sellerId,
+          tokenAddress,
+          booking.hourlyRate * 1.025, // include platform fee
+          Math.floor((booking.scheduledDate ? new Date(booking.scheduledDate).getTime() : Date.now()) / 1000),
+          booking.sessionNotes || ""
+        )
+
+        setPaymentState({ status: "success", message: "On-chain payment successful", bookingId: createdBooking.id })
+        await bookingService.updateBookingStatus(createdBooking.id, "confirmed", user.id)
+        localStorage.removeItem("pendingBooking")
+        setTimeout(() => router.push(`/booking-confirmation/${createdBooking.id}`), 2000)
+        return
+      } catch (err) {
+        console.error("Wallet flow error:", err)
+        setPaymentState({ status: "error", message: err instanceof Error ? err.message : String(err) })
+        return
+      }
     }
 
     setPaymentState({ status: "processing", message: "Initiating payment..." })

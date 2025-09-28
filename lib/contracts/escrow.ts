@@ -151,3 +151,52 @@ export function createEscrowContract(
 ) {
   return new EscrowContract(signer, contractAddress);
 }
+
+// Convenience helper: in-browser flow to approve token and call createBooking
+export async function createBookingWithApproval(
+  signer: ethers.Signer,
+  seller: string,
+  tokenAddress: string,
+  humanAmount: number,
+  scheduledTimeSec: number,
+  sessionNotes: string
+): Promise<string> {
+  // Determine decimals: USDC commonly 6, WLD assumed 18
+  const decimals =
+    tokenAddress.toLowerCase() === USDC_TOKEN_ADDRESS.toLowerCase() ? 6 : 18;
+
+  const amount = (ethers as any).parseUnits
+    ? (ethers as any).parseUnits(humanAmount.toString(), decimals)
+    : ethers.parseUnits(humanAmount.toString(), decimals);
+
+  const escrow = new ethers.Contract(
+    ESCROW_CONTRACT_ADDRESS,
+    ESCROW_ABI,
+    signer
+  );
+
+  // Approve tokens to escrow
+  const tokenContract = new ethers.Contract(
+    tokenAddress,
+    ["function approve(address spender, uint256 amount) external returns (bool)"],
+    signer
+  );
+
+  const approveTx = await tokenContract.approve(ESCROW_CONTRACT_ADDRESS, amount);
+  await approveTx.wait();
+
+  // Call createBooking on escrow contract
+  const tx = await escrow.createBooking(
+    seller,
+    tokenAddress,
+    amount,
+    scheduledTimeSec,
+    sessionNotes
+  );
+  const receipt = await tx.wait();
+
+  const event = receipt.events?.find((e: any) => e.event === "BookingCreated");
+  const bookingId = event?.args?.bookingId ?? event?.args?.[0];
+  if (!bookingId) throw new Error("BookingCreated event not found in receipt");
+  return bookingId as string;
+}
